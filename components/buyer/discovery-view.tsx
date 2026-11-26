@@ -1,8 +1,8 @@
 "use client";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { MapPin, Search, SlidersHorizontal, X } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { MapPin, Search, SlidersHorizontal, TrendingUp, X } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store";
 import { useUiStore } from "@/store/ui";
 import { searchOffers, searchShops, type DiscoveryFilters } from "@/store/selectors";
@@ -15,7 +15,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/misc";
-import { BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
+import { AppearItem, BlurEntrance } from "@/components/ui/scroll-reveal";
 import { Hydrated } from "@/components/shell/hydrated";
 import { RetailImage } from "@/components/media/retail-image";
 import { CategoryStrip } from "./category-strip";
@@ -23,6 +23,7 @@ import { OfferCard, OfferCardSkeleton, ribbonLabel } from "./offer-card";
 import { ShopCoverCard } from "./shop-cover-card";
 import { FollowSheet } from "./follow-sheet";
 import { LeadPanel } from "./lead-panel";
+import { SEARCH_HINTS } from "./rotating-search-hint";
 import { useDiscoveryCtx, useLookups } from "./hooks";
 import { RADIUS_OPTIONS } from "./location-sheet";
 
@@ -134,8 +135,8 @@ function DiscoverySkeleton() {
           <Skeleton key={i} className="h-9 w-24 rounded-full" />
         ))}
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 8 }, (_, i) => (
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
           <OfferCardSkeleton key={i} />
         ))}
       </div>
@@ -158,6 +159,15 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
   const [followOpen, setFollowOpen] = useState(false);
 
   const [qDraft, setQDraft] = useState(st.q);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode === "search" && !st.q && st.tab !== "shops") {
+      const t = setTimeout(() => searchInputRef.current?.focus(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [mode, st.q, st.tab]);
+
   useEffect(() => {
     if (qDraft === st.q) return;
     const t = setTimeout(() => update({ q: qDraft.trim() }), 250);
@@ -210,16 +220,17 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
         {mode === "offers" && <OffersHero count={offerResults.length} scopeLabel={scopeLabel} />}
       </BlurEntrance>
 
-      {/* Clean Search + Single Filters Button (replaces 6 stacked filter walls!) */}
-      <BlurEntrance delay={0.04} className="flex items-center gap-2.5">
-        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-black/[0.06] bg-white/95 px-4 shadow-soft backdrop-blur-md transition-colors focus-within:border-indigo-500">
-          <Search className="size-[18px] shrink-0 text-ink-900" strokeWidth={2} />
+      {/* Direct Search Input + Single Filters Button */}
+      <BlurEntrance delay={0.03} className="flex items-center gap-2.5">
+        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-[#E7DBC2] bg-white px-4 shadow-soft transition-all focus-within:border-flame-500 focus-within:ring-4 focus-within:ring-saffron-400/20">
+          <Search className="size-[18px] shrink-0 text-flame-600" strokeWidth={2.1} />
           <input
+            ref={searchInputRef}
             value={qDraft}
             onChange={(e) => setQDraft(e.target.value)}
             placeholder={mode === "category" && category ? `${category.name} mein dhoondhein…` : mode === "offers" ? "Search offers — saree, mithai, cover…" : "Search shops, sarees, mithai…"}
             aria-label="Search"
-            className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-300"
+            className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-400"
             enterKeyHint="search"
           />
           {qDraft && (
@@ -232,7 +243,7 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
         <button
           type="button"
           onClick={() => useUiStore.getState().setLocationOpen(true)}
-          className="hidden h-12 shrink-0 items-center gap-1.5 rounded-2xl border border-black/[0.06] bg-white px-3.5 text-[13.5px] font-bold text-ink-900 shadow-soft transition-colors hover:bg-canvas sm:inline-flex lg:hidden"
+          className="hidden h-12 shrink-0 items-center gap-1.5 rounded-full border border-[#E7DBC2] bg-white px-3.5 text-[13.5px] font-bold text-ink-900 shadow-soft transition-colors hover:bg-canvas md:inline-flex lg:hidden"
         >
           <MapPin className="size-4 text-flame-600" />
           <span className="max-w-[90px] truncate">{locById[originAreaId]?.name ?? "Akurdi"}</span>
@@ -241,13 +252,32 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
         <button
           type="button"
           onClick={() => setFiltersOpen(true)}
-          className="relative flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-ink-900 px-4 text-[14px] font-bold text-white shadow-soft transition-transform active:scale-95 lg:hidden"
+          className="relative flex h-12 shrink-0 items-center gap-2 rounded-full bg-ink-900 px-4 text-[14px] font-bold text-white shadow-soft transition-transform active:scale-95 lg:hidden"
         >
           <SlidersHorizontal className="size-4" />
           <span>Filters</span>
           {activeCount > 0 && <span className="tabular flex size-5 items-center justify-center rounded-full bg-flame-500 text-[11px]">{activeCount}</span>}
         </button>
       </BlurEntrance>
+
+      {/* Instant trending hints on /search when input is empty */}
+      {mode === "search" && !qDraft.trim() && (
+        <div className="no-scrollbar -mx-4 mt-3 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 lg:mx-0 lg:px-0">
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-bold text-ink-500">
+            <TrendingUp className="size-3.5 text-flame-500" /> Trending:
+          </span>
+          {SEARCH_HINTS.map((hint) => (
+            <button
+              key={hint}
+              type="button"
+              onClick={() => setQDraft(hint)}
+              className="h-8 shrink-0 rounded-full border border-[#EFE2C4] bg-wash-cream/70 px-3 text-[12px] font-semibold whitespace-nowrap text-ink-800 transition-colors hover:border-flame-500/40 hover:bg-wash-cream"
+            >
+              {hint}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Single calm horizontal pill bar */}
       <BlurEntrance delay={0.08} className="mt-3.5">
@@ -348,21 +378,21 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
               hasFilters={activeCount > 0 || !!st.q}
             />
           ) : tab === "offers" ? (
-            <ScrollBlurSection exitFade={false} className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:gap-4 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {offerResults.map((r, i) => (
-                <div key={r.offer.id} className="h-full min-w-0">
+                <AppearItem key={r.offer.id} index={i} immediate={i < 4} className="h-full min-w-0">
                   <OfferCard offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} priority={i < 8} className="h-full" />
-                </div>
+                </AppearItem>
               ))}
-            </ScrollBlurSection>
+            </div>
           ) : (
-            <ScrollBlurSection exitFade={false} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {shopResults.map((r) => {
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {shopResults.map((r, i) => {
                 const best = Object.values(ctx.offers)
                   .filter((o) => o.shopId === r.shop.id && o.status === "live")
                   .sort((a, b) => (b.discountPct ?? 0) - (a.discountPct ?? 0))[0];
                 return (
-                  <div key={r.shop.id} className="h-full min-w-0">
+                  <AppearItem key={r.shop.id} index={i} immediate={i < 4} className="h-full min-w-0">
                     <ShopCoverCard
                       shop={r.shop}
                       category={catById[r.shop.categoryId]}
@@ -376,10 +406,10 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
                         setFollowOpen(true);
                       }}
                     />
-                  </div>
+                  </AppearItem>
                 );
               })}
-            </ScrollBlurSection>
+            </div>
           )}
         </div>
       </div>
@@ -419,7 +449,9 @@ function CatChip({ category, label, selected, onClick }: { category?: Category; 
       className={cn(
         "flex h-10 shrink-0 items-center gap-2 rounded-full border pr-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
         category ? "pl-1" : "pl-3.5",
-        selected ? "border-ink-900 bg-ink-900 text-white" : "border-hairline bg-surface text-ink-900 hover:border-hairline-strong",
+        selected
+          ? "border-transparent bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)] text-white shadow-[0_4px_12px_-3px_rgba(236,70,19,0.4)]"
+          : "border-[#EADEC6] bg-white text-ink-900 hover:border-[#D9C7A3]",
       )}
     >
       {category && <RetailImage imageKey={category.imageKey} size="thumb" mode="cover" wash={category.wash} alt="" priority className="size-8 rounded-full" />}

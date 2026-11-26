@@ -126,20 +126,20 @@ function Panel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[62]" onKeyDown={onKey} role="dialog" aria-modal="true" aria-label="Search">
-      <motion.div className="absolute inset-0 hidden bg-ink-900/40 lg:block" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+      <motion.div className="absolute inset-0 hidden bg-[#1A140F]/35 backdrop-blur-sm lg:block" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: -10, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, transition: { duration: 0.14 } }}
         transition={spring.default}
-        className="absolute inset-0 flex flex-col bg-surface lg:inset-x-auto lg:top-4 lg:bottom-auto lg:left-1/2 lg:max-h-[80dvh] lg:w-[680px] lg:-translate-x-1/2 lg:rounded-xl lg:shadow-2"
+        className="absolute inset-0 flex flex-col bg-[#FFFDF9]/96 backdrop-blur-2xl lg:inset-x-auto lg:top-4 lg:bottom-auto lg:left-1/2 lg:max-h-[82dvh] lg:w-[700px] lg:-translate-x-1/2 lg:rounded-[28px] lg:border lg:border-black/[0.08] lg:shadow-[0_24px_60px_-14px_rgba(18,20,26,0.28)]"
       >
-        <div className="flex items-center gap-2 border-b border-hairline px-3 py-3">
-          <button type="button" onClick={onClose} aria-label="Wapas" className="flex size-10 items-center justify-center rounded-full hover:bg-sunk lg:hidden">
+        <div className="flex items-center gap-2 border-b border-black/[0.06] px-4 py-3.5">
+          <button type="button" onClick={onClose} aria-label="Wapas" className="flex size-10 items-center justify-center rounded-full bg-white text-ink-900 shadow-1 transition-colors hover:bg-canvas lg:hidden">
             <ArrowLeft className="size-5" />
           </button>
-          <div className="flex h-12 flex-1 items-center gap-2.5 rounded-md bg-sunk px-3.5 focus-within:ring-2 focus-within:ring-indigo-500">
-            <Search className="size-[18px] text-ink-700" strokeWidth={1.75} />
+          <div className="flex h-12 flex-1 items-center gap-2.5 rounded-full border border-[#E7DBC2] bg-white px-4 shadow-1 focus-within:border-flame-500 focus-within:ring-4 focus-within:ring-saffron-400/20">
+            <Search className="size-[18px] shrink-0 text-flame-600" strokeWidth={2.1} />
             <input
               ref={inputRef}
               value={q}
@@ -149,16 +149,16 @@ function Panel({ onClose }: { onClose: () => void }) {
               }}
               placeholder="Saree, kaju katli, screen guard, Akurdi…"
               aria-label="Search"
-              className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-300"
+              className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-400"
               enterKeyHint="search"
             />
             {q && (
-              <button type="button" onClick={() => setQ("")} aria-label="Clear" className="flex size-7 items-center justify-center rounded-full hover:bg-hairline">
+              <button type="button" onClick={() => setQ("")} aria-label="Clear" className="flex size-7 items-center justify-center rounded-full hover:bg-sunk">
                 <X className="size-4" />
               </button>
             )}
           </div>
-          <button type="button" onClick={onClose} className="hidden h-10 rounded-md px-3 text-[14px] font-semibold text-ink-700 hover:bg-sunk lg:block">
+          <button type="button" onClick={onClose} className="hidden h-10 rounded-full px-3.5 text-[13px] font-bold text-ink-600 hover:bg-black/[0.05] lg:block">
             Esc
           </button>
         </div>

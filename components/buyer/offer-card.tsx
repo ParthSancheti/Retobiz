@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { BadgeCheck, Heart, Timer } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Check, Heart, Timer } from "lucide-react";
 import type { Category, Offer, Shop } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { daysLeft, formatDistance, formatINR } from "@/lib/format";
@@ -20,8 +20,8 @@ export function ribbonLabel(o: Offer): string | undefined {
 }
 
 /**
- * Consumer offer card — unified rounded white container with nested image frame,
- * clean top-left discount badge, price/shop hierarchy, and aligned CLAIM action.
+ * Consumer offer card — spacious editorial framing, clean typographic price hierarchy,
+ * restrained single badge + inline claim pill (no cramped stacked pills or orange walls).
  */
 export function OfferCard({
   offer,
@@ -52,11 +52,11 @@ export function OfferCard({
   return (
     <article
       className={cn(
-        "group relative flex h-full flex-col rounded-[22px] border border-black/[0.06] bg-white p-3 shadow-[0_1px_2px_rgba(18,20,26,0.04)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_14px_34px_-10px_rgba(18,20,26,0.12)] active:scale-[0.98]",
+        "group relative flex h-full flex-col rounded-[26px] border border-black/[0.06] bg-white p-3.5 shadow-[0_2px_10px_-3px_rgba(18,20,26,0.06)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_18px_38px_-12px_rgba(18,20,26,0.14)] active:scale-[0.99]",
         className,
       )}
     >
-      <div className="relative overflow-hidden rounded-[16px]">
+      <div className="relative overflow-hidden rounded-[20px]">
         <Link
           href={href}
           onClick={() => trackOfferClick(offer.id)}
@@ -71,20 +71,16 @@ export function OfferCard({
             wash={category?.wash ?? "cream"}
             priority={priority}
             zoom
-            className="aspect-[1/1.04] w-full rounded-[16px]"
+            className={cn(
+              "w-full rounded-[20px]",
+              size === "sm" ? "aspect-[4/3] md:aspect-[1/1.02]" : "aspect-[16/11] md:aspect-[1/1.02]",
+            )}
           />
         </Link>
 
         {ribbon && (
-          <span className="tabular pointer-events-none absolute top-2.5 left-2.5 inline-flex h-6 items-center rounded-full bg-flame-500 px-2.5 text-[11.5px] leading-none font-extrabold tracking-[0.01em] text-white shadow-[0_4px_10px_-4px_rgba(255,90,44,0.75)]">
+          <span className="tabular pointer-events-none absolute top-3 left-3 inline-flex h-7 items-center rounded-full bg-flame-500 px-3 text-[12px] leading-none font-extrabold tracking-[0.02em] text-white shadow-[0_4px_12px_-3px_rgba(236,70,19,0.65)]">
             {ribbon}
-          </span>
-        )}
-
-        {left != null && left <= 7 && (
-          <span className="pointer-events-none absolute bottom-2.5 left-2.5 inline-flex h-6 items-center gap-1 rounded-full bg-ink-900/80 px-2.5 text-[10.5px] font-bold text-saffron-400 backdrop-blur-md">
-            <Timer className="size-3" strokeWidth={2.5} />
-            {left === 0 ? "Aaj last din" : `${left} din baaki`}
           </span>
         )}
 
@@ -98,57 +94,77 @@ export function OfferCard({
           }}
           aria-pressed={saved}
           aria-label={saved ? "Saved se hatayein" : "Offer save karein"}
-          className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-white/90 shadow-soft backdrop-blur-md transition-colors hover:bg-white"
+          className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full bg-white/90 shadow-soft backdrop-blur-md transition-colors hover:bg-white"
         >
           <AnimatePresence initial={false} mode="popLayout">
             <motion.span key={saved ? "on" : "off"} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={spring.snappy}>
-              <Heart className={cn("size-[15px]", saved ? "fill-flame-500 text-flame-500" : "text-ink-700")} strokeWidth={2.25} />
+              <Heart className={cn("size-4", saved ? "fill-flame-500 text-flame-500" : "text-ink-700")} strokeWidth={2.2} />
             </motion.span>
           </AnimatePresence>
         </motion.button>
       </div>
 
-      <div className="flex flex-1 flex-col pt-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {offer.price != null ? (
-            <>
-              <span className={cn("tabular inline-flex items-center rounded-[10px] bg-leaf-600 px-2 font-sans font-extrabold tracking-[-0.01em] text-white", size === "sm" ? "h-7 text-[15px]" : "h-7 text-[16px]")}>
-                {formatINR(offer.price)}
-                {offer.unit && <span className="ml-0.5 text-[11px] font-semibold text-white/80">{offer.unit}</span>}
+      <div className="flex flex-1 flex-col px-0.5 pt-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-baseline gap-2">
+            {offer.price != null ? (
+              <>
+                <span className="tabular font-display text-[21px] leading-none font-extrabold tracking-[-0.02em] text-ink-900">
+                  {formatINR(offer.price)}
+                  {offer.unit && <span className="ml-0.5 font-sans text-[12px] font-semibold text-ink-500">{offer.unit}</span>}
+                </span>
+                {offer.mrp && offer.mrp > offer.price && (
+                  <span className="tabular text-[13px] text-ink-400 line-through">{formatINR(offer.mrp)}</span>
+                )}
+              </>
+            ) : (
+              <span className="font-display text-[17px] leading-none font-extrabold text-flame-600">
+                Flat {offer.discountPct}% off
               </span>
-              {offer.mrp && offer.mrp > offer.price && <span className="tabular text-[12.5px] text-ink-500 line-through">{formatINR(offer.mrp)}</span>}
-            </>
-          ) : (
-            <span className={cn("inline-flex items-center rounded-[10px] bg-flame-50 px-2 font-extrabold text-flame-700", size === "sm" ? "h-7 text-[13px]" : "h-7 text-[14px]")}>
-              Flat {offer.discountPct}% off
+            )}
+          </div>
+          {left != null && left <= 7 && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-wash-cream px-2.5 py-1 text-[11px] font-bold text-[#8A5600]">
+              <Timer className="size-3" strokeWidth={2.25} />
+              {left === 0 ? "Last day" : `${left}d left`}
             </span>
           )}
         </div>
 
-        <h3 className={cn("mt-2 line-clamp-2 font-sans font-bold tracking-[-0.005em] text-ink-900", size === "sm" ? "text-[13.5px] leading-[18px]" : "text-[14.5px] leading-5")}>
-          <Link href={href} onClick={() => trackOfferClick(offer.id)} className="transition-colors hover:text-indigo-700">
+        <h3 className="mt-2 line-clamp-2 font-display text-[16px] leading-[21px] font-bold tracking-[-0.01em] text-ink-900 md:text-[15.5px]">
+          <Link href={href} onClick={() => trackOfferClick(offer.id)} className="transition-colors hover:text-flame-600">
             {offer.title}
           </Link>
         </h3>
 
-        <div className="mt-auto flex min-w-0 items-center gap-1 pt-2 text-[12px] text-ink-500">
-          {shop.isVerified && <BadgeCheck className="size-3.5 shrink-0 fill-indigo-500 text-white" strokeWidth={2} aria-label="Verified" />}
-          <span className="truncate">{shop.name}</span>
-          {distanceKm != null && <span className="tabular shrink-0 font-semibold text-ink-700">· {formatDistance(distanceKm)}</span>}
-        </div>
+        <div className="mt-auto flex items-center justify-between gap-2.5 border-t border-black/[0.05] pt-3">
+          <Link href={href} onClick={() => trackOfferClick(offer.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] text-ink-600 hover:text-ink-900">
+            {shop.isVerified && <BadgeCheck className="size-4 shrink-0 fill-indigo-500 text-white" strokeWidth={2} aria-label="Verified" />}
+            <span className="truncate font-medium">{shop.name}</span>
+            {distanceKm != null && <span className="tabular shrink-0 font-semibold text-ink-900">· {formatDistance(distanceKm)}</span>}
+          </Link>
 
-        <button
-          type="button"
-          onClick={() => openClaim(shop.id, offer.id)}
-          className={cn(
-            "mt-3 inline-flex h-9 w-full items-center justify-center rounded-[12px] border text-[12.5px] font-extrabold tracking-[0.03em] transition-all duration-200 active:scale-[0.98]",
-            following
-              ? "border-leaf-500/30 bg-leaf-50 text-leaf-700"
-              : "border-flame-500/25 bg-flame-50 text-flame-600 hover:border-flame-500 hover:bg-flame-500 hover:text-white",
-          )}
-        >
-          {following ? "✓ PAAYA" : "CLAIM"}
-        </button>
+          <button
+            type="button"
+            onClick={() => openClaim(shop.id, offer.id)}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-4 text-[12.5px] font-bold transition-all duration-200 active:scale-[0.96]",
+              following
+                ? "bg-leaf-50 text-leaf-700 ring-1 ring-leaf-500/30"
+                : "bg-ink-900 text-white hover:bg-flame-600",
+            )}
+          >
+            {following ? (
+              <>
+                <Check className="size-3.5" strokeWidth={2.5} /> Saved
+              </>
+            ) : (
+              <>
+                Claim <ArrowUpRight className="size-3.5" strokeWidth={2.2} />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -156,13 +172,15 @@ export function OfferCard({
 
 export function OfferCardSkeleton() {
   return (
-    <div className="rounded-[22px] border border-black/[0.06] bg-white p-3 shadow-[0_1px_2px_rgba(18,20,26,0.04)]">
-      <div className="skeleton aspect-[1/1.04] rounded-[16px]" />
-      <div className="space-y-2 pt-3">
-        <div className="skeleton h-6 w-20 rounded-md" />
+    <div className="rounded-[26px] border border-black/[0.06] bg-white p-3.5 shadow-[0_1px_2px_rgba(18,20,26,0.04)]">
+      <div className="skeleton aspect-[16/11] rounded-[20px] md:aspect-[1/1.02]" />
+      <div className="space-y-2.5 pt-3.5">
+        <div className="skeleton h-6 w-24 rounded-md" />
         <div className="skeleton h-4 rounded-sm" />
-        <div className="skeleton h-3 w-2/3 rounded-sm" />
-        <div className="skeleton mt-3 h-9 w-full rounded-[12px]" />
+        <div className="flex items-center justify-between pt-2">
+          <div className="skeleton h-3.5 w-28 rounded-sm" />
+          <div className="skeleton h-9 w-20 rounded-full" />
+        </div>
       </div>
     </div>
   );

@@ -1,20 +1,18 @@
 "use client";
-import { motion, useMotionTemplate, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useRef, type ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { ease } from "@/lib/motion";
 
 /**
- * Apple-style scroll choreography:
- * Sections softly de-blur & rise into focus as they enter the viewport,
- * and subtly fade upward with gentle blur as they scroll out at the top.
+ * Clean section landmark wrapper: stays crisp (opacity: 1, blur: 0) so tall lists/grids
+ * and nested AppearItem cards never double-delay or blur across the middle viewport.
  */
 export function ScrollBlurSection({
   children,
   className,
   id,
   "aria-labelledby": ariaLabelledBy,
-  exitFade = true,
 }: {
   children: ReactNode;
   className?: string;
@@ -22,59 +20,15 @@ export function ScrollBlurSection({
   "aria-labelledby"?: string;
   exitFade?: boolean;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  const reduce = useReducedMotion();
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 98%", "end 4%"],
-  });
-
-  const opacity = useTransform(
-    scrollYProgress,
-    exitFade ? [0, 0.1, 0.88, 1] : [0, 0.12, 1],
-    exitFade ? [0.25, 1, 1, 0.35] : [0.25, 1, 1],
-  );
-  const scale = useTransform(
-    scrollYProgress,
-    exitFade ? [0, 0.1, 0.88, 1] : [0, 0.12, 1],
-    exitFade ? [0.975, 1, 1, 0.975] : [0.975, 1, 1],
-  );
-  const y = useTransform(
-    scrollYProgress,
-    exitFade ? [0, 0.1, 0.88, 1] : [0, 0.12, 1],
-    exitFade ? [18, 0, 0, -10] : [18, 0, 0],
-  );
-  const blurAmount = useTransform(
-    scrollYProgress,
-    exitFade ? [0, 0.1, 0.88, 1] : [0, 0.12, 1],
-    exitFade ? [5, 0, 0, 5] : [5, 0, 0],
-  );
-  const filter = useMotionTemplate`blur(${blurAmount}px)`;
-
-  if (reduce) {
-    return (
-      <section ref={ref} id={id} aria-labelledby={ariaLabelledBy} className={className}>
-        {children}
-      </section>
-    );
-  }
-
   return (
-    <motion.section
-      ref={ref}
-      id={id}
-      aria-labelledby={ariaLabelledBy}
-      style={{ opacity, scale, y, filter }}
-      className={cn("will-change-[transform,opacity,filter]", className)}
-    >
+    <section id={id} aria-labelledby={ariaLabelledBy} className={className}>
       {children}
-    </motion.section>
+    </section>
   );
 }
 
 /**
- * Subtle de-blur entrance for initial hero / header blocks or individual grid cards.
+ * Fast, crystal-clear entrance for hero / above-the-fold containers (zero muddy blur linger).
  */
 export function BlurEntrance({
   children,
@@ -89,10 +43,56 @@ export function BlurEntrance({
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.985, filter: "blur(6px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      transition={{ duration: 0.48, delay, ease: ease.out }}
+      initial={{ opacity: 0, y: 12, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28, delay, ease: ease.out }}
       className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/**
+ * Card-level "appear out of thin air" materialization on scroll:
+ * Scales smoothly from 0.94 -> 1 with crisp fade & gentle lift right as it enters view.
+ */
+export function AppearItem({
+  children,
+  index = 0,
+  immediate = false,
+  className,
+}: {
+  children: ReactNode;
+  index?: number;
+  immediate?: boolean;
+  className?: string;
+}) {
+  const reduce = useReducedMotion();
+  if (reduce) return <div className={className}>{children}</div>;
+
+  const staggerDelay = Math.min((index % 4) * 0.035, 0.105);
+
+  if (immediate) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.32, delay: staggerDelay, ease: ease.out }}
+        className={cn(className)}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22, scale: 0.94 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.01, margin: "120px 0px 40px 0px" }}
+      transition={{ duration: 0.34, delay: staggerDelay, ease: ease.out }}
+      className={cn(className)}
     >
       {children}
     </motion.div>

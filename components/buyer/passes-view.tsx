@@ -115,7 +115,7 @@ function Passes() {
             Kisi bhi offer card par <Heart className="inline size-4" /> dabaiye — yahan save ho jayega.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {savedOffers.map((o) => (
               <OfferCard key={o.id} offer={o} shop={shops[o.shopId]} category={catById[o.categoryId]} />
             ))}

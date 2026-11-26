@@ -7,9 +7,9 @@ import { useStore } from "@/store";
 import { searchOffers, searchShops } from "@/store/selectors";
 import { daysLeft, formatINR } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { spring, stagger } from "@/lib/motion";
+import { spring } from "@/lib/motion";
 import { SectionHeader, Skeleton } from "@/components/ui/misc";
-import { BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
+import { AppearItem, BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
 import { Hydrated } from "@/components/shell/hydrated";
 import { RetailImage } from "@/components/media/retail-image";
 import type { ImageKey } from "@/data/images";
@@ -71,7 +71,7 @@ function HomeSkeleton() {
           <Skeleton key={i} className="aspect-square rounded-lg" />
         ))}
       </div>
-      <div className="mt-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
           <OfferCardSkeleton key={i} />
         ))}
@@ -126,12 +126,12 @@ function HomeContent() {
   return (
     <div className="flex flex-col gap-10 pb-6 lg:gap-14">
       <BazaarBand>
-        {/* Clean single segmented switcher above hero — fits 390px with zero clipping */}
+        {/* Clean single segmented switcher above hero — warm theme palette */}
         <BlurEntrance className="mb-4 flex items-center justify-between gap-3">
           <div
             role="tablist"
             aria-label="Marketplace sections"
-            className="inline-flex items-center gap-1 rounded-full border border-black/[0.06] bg-white/80 p-1 shadow-[0_2px_12px_-4px_rgba(18,20,26,0.08)] backdrop-blur-xl"
+            className="inline-flex items-center gap-1 rounded-full border border-[#EFE2C4] bg-[#FFFDF8]/90 p-1 shadow-[0_2px_12px_-4px_rgba(90,42,0,0.1)] backdrop-blur-xl"
           >
             {JUMP_OPTIONS.map((opt) => {
               const active = activeJump === opt.id;
@@ -145,17 +145,23 @@ function HomeContent() {
                   onClick={() => jumpTo(opt)}
                   className={cn(
                     "relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold whitespace-nowrap transition-colors duration-200",
-                    active ? "text-white" : "text-ink-700 hover:text-ink-900",
+                    active ? "text-white" : "text-[#5C5044] hover:text-ink-900",
                   )}
                 >
-                  {active && <motion.span layoutId="home-jump-pill" transition={spring.pill} className="absolute inset-0 rounded-full bg-ink-900" />}
-                  <Icon className={cn("relative size-3.5", active ? "text-saffron-400" : "text-ink-500")} strokeWidth={2.2} />
+                  {active && (
+                    <motion.span
+                      layoutId="home-jump-pill"
+                      transition={spring.pill}
+                      className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)] shadow-[0_4px_12px_-3px_rgba(236,70,19,0.45)]"
+                    />
+                  )}
+                  <Icon className={cn("relative size-3.5", active ? "text-white" : "text-[#6D5F52]")} strokeWidth={2.2} />
                   <span className="relative">{opt.label}</span>
                 </button>
               );
             })}
           </div>
-          <span className="hidden text-[12.5px] font-medium text-ink-500 md:inline">
+          <span className="hidden text-[12.5px] font-medium text-ink-600 md:inline">
             <b className="font-bold text-ink-900">{areaName}</b> · verified local shops & live offers
           </span>
         </BlurEntrance>
@@ -163,27 +169,25 @@ function HomeContent() {
         <BlurEntrance delay={0.04}>
           <HeroBento />
         </BlurEntrance>
-
-        {/* Calm non-sticky quick intent chips below hero */}
-        <BlurEntrance delay={0.08} className="mt-4">
-          <CategoryStrip />
-        </BlurEntrance>
       </BazaarBand>
 
       {/* Category Window */}
       <ScrollBlurSection id="home-categories" aria-labelledby="cat-window" className="-mt-4 scroll-mt-24 rounded-[28px] border border-black/[0.05] bg-white/95 p-5 shadow-soft lg:-mt-6 lg:p-6">
         <SectionHeader eyebrow="10 categories · aas-paas" title={<span id="cat-window">Kya dhoondh rahe hain?</span>} className="mb-4" />
-        <motion.ul variants={stagger.container} initial="hidden" animate="show" className="grid grid-cols-4 gap-x-2.5 gap-y-4 md:grid-cols-5 lg:grid-cols-10 lg:gap-4">
+        <ul className="grid grid-cols-4 gap-x-2.5 gap-y-4 md:grid-cols-5 lg:grid-cols-10 lg:gap-4">
           {categories.map((c, i) => (
-            <motion.li key={c.id} variants={i < 8 ? stagger.item : undefined}>
-              <CategoryTile category={c} />
-            </motion.li>
+            <li key={c.id}>
+              <AppearItem index={i} immediate={i < 4}>
+                <CategoryTile category={c} />
+              </AppearItem>
+            </li>
           ))}
-        </motion.ul>
+        </ul>
       </ScrollBlurSection>
 
-      {/* Flash deals */}
+      {/* Flash deals + integrated quick intent filters */}
       <ScrollBlurSection id="home-offers" className="scroll-mt-24">
+        <CategoryStrip className="mb-4" />
         <Rail
           id="flash"
           eyebrow={
@@ -201,10 +205,12 @@ function HomeContent() {
               Sab dekhein
             </Link>
           }
-          itemClassName="w-[44%] min-w-[162px] md:w-[230px] lg:w-[260px]"
+          itemClassName="w-[74%] min-w-[268px] max-w-[300px] md:w-[260px] lg:w-[276px]"
         >
           {flash.map((r, i) => (
-            <OfferCard key={r.offer.id} offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} size="sm" priority={i < 4} className="h-full w-full" />
+            <AppearItem key={r.offer.id} index={i} className="h-full w-full">
+              <OfferCard offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} priority={i < 4} className="h-full w-full" />
+            </AppearItem>
           ))}
         </Rail>
       </ScrollBlurSection>
@@ -213,14 +219,16 @@ function HomeContent() {
       {reelList.length > 0 && (
         <ScrollBlurSection id="reels" className="scroll-mt-24">
           <Rail id="reels-title" eyebrow="Dukaanon aur local creators se" title="Local Reels" itemClassName="">
-            {reelList.map((r) => (
-              <ReelCard key={r.id} size="lg" reel={r} shop={ctx.shops[r.shopId]} category={catById[ctx.shops[r.shopId].categoryId]} href={`/?reel=${r.id}`} />
+            {reelList.map((r, i) => (
+              <AppearItem key={r.id} index={i}>
+                <ReelCard size="lg" reel={r} shop={ctx.shops[r.shopId]} category={catById[ctx.shops[r.shopId].categoryId]} href={`/?reel=${r.id}`} />
+              </AppearItem>
             ))}
           </Rail>
         </ScrollBlurSection>
       )}
 
-      {/* Showroom offers grid */}
+      {/* Showroom offers grid — generous full-width cards on phones */}
       <ScrollBlurSection aria-labelledby="showroom" className="scroll-mt-24">
         <SectionHeader
           eyebrow={`${areaName} ke ${buyerLocation.radiusKm} km mein`}
@@ -232,11 +240,11 @@ function HomeContent() {
           }
           className="mb-4"
         />
-        <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
-          {showroom.slice(0, 8).map((r) => (
-            <div key={r.offer.id} className="h-full min-w-0">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
+          {showroom.slice(0, 8).map((r, i) => (
+            <AppearItem key={r.offer.id} index={i} className="h-full min-w-0">
               <OfferCard offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} className="h-full" />
-            </div>
+            </AppearItem>
           ))}
         </div>
       </ScrollBlurSection>
@@ -254,21 +262,22 @@ function HomeContent() {
           className="mb-4"
         />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-          {nearbyShops.map((r) => (
-            <ShopCoverCard
-              key={r.shop.id}
-              shop={r.shop}
-              category={catById[r.shop.categoryId]}
-              areaName={locById[r.shop.areaId]?.name ?? ""}
-              distanceKm={r.distanceKm}
-              topDeal={topDealFor(r.shop.id)}
-              liveOffers={r.liveOfferCount}
-              className="h-full"
-              onFollow={() => {
-                setFollowShopId(r.shop.id);
-                setSheetOpen(true);
-              }}
-            />
+          {nearbyShops.map((r, i) => (
+            <AppearItem key={r.shop.id} index={i} className="h-full min-w-0">
+              <ShopCoverCard
+                shop={r.shop}
+                category={catById[r.shop.categoryId]}
+                areaName={locById[r.shop.areaId]?.name ?? ""}
+                distanceKm={r.distanceKm}
+                topDeal={topDealFor(r.shop.id)}
+                liveOffers={r.liveOfferCount}
+                className="h-full"
+                onFollow={() => {
+                  setFollowShopId(r.shop.id);
+                  setSheetOpen(true);
+                }}
+              />
+            </AppearItem>
           ))}
         </div>
       </ScrollBlurSection>
@@ -393,8 +402,8 @@ function PromoCard({ href, imageKey, eyebrow, title, sub, wash }: { href: string
           <span className="mt-1 block font-display text-[19px] leading-[23px] font-extrabold tracking-[-0.015em] text-ink-900 lg:text-[21px] lg:leading-[24px]">{title}</span>
           {sub && <span className="mt-1 line-clamp-2 block text-[12px] leading-[16px] text-ink-700">{sub}</span>}
         </div>
-        <span className={`mt-2.5 inline-flex h-8 w-fit items-center gap-1 rounded-full px-3.5 text-[11.5px] font-extrabold tracking-[0.03em] whitespace-nowrap text-white uppercase ${t.cta}`}>
-          Dekhein <ArrowRight className="size-3.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5" />
+        <span className="mt-2.5 inline-flex h-8 w-fit items-center gap-1 rounded-full bg-white/85 px-3.5 text-[12px] font-bold whitespace-nowrap text-ink-900 shadow-1 backdrop-blur-sm transition-colors group-hover:bg-white">
+          Explore <ArrowRight className="size-3.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5" />
         </span>
       </div>
       <RetailImage imageKey={imageKey} mode="cover" size="card" wash="cream" alt="" priority zoom className="absolute right-[-2%] bottom-0 h-[108%] w-[44%] bg-transparent lg:-right-[6%] lg:h-[112%] lg:w-[52%]" />

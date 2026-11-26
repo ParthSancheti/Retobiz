@@ -12,8 +12,13 @@ export default function BuyerLayout({ children }: LayoutProps<"/">) {
     <div className="flex min-h-dvh flex-col overflow-x-clip bg-surface">
       <DemoUtilityBar />
       <BuyerTopBar />
-      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pb-28 lg:px-8 lg:pb-0">{children}</main>
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pb-16 lg:px-8 lg:pb-0">{children}</main>
       <BuyerFooter />
+      {/* Subtle bottom-edge frost veil ONLY at the extreme screen bottom behind the floating dock */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-20 bg-gradient-to-t from-[#FFFBF2]/95 via-[#FFFBF2]/65 to-transparent backdrop-blur-[2px] lg:hidden"
+      />
       <BottomNav items={BUYER_NAV} id="buyer" />
       <SearchOverlay />
       <LocationSheet />

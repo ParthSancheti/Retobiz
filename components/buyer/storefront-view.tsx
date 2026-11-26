@@ -39,7 +39,7 @@ import { Badge, GoogleBadge, GstBadge, ProBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { LiveFlash, Skeleton } from "@/components/ui/misc";
-import { BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
+import { AppearItem, BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
 import { RetailImage } from "@/components/media/retail-image";
 import { OfferCard, OfferCardSkeleton, ribbonLabel } from "./offer-card";
 import { ReelCard } from "./reel-card";
@@ -456,32 +456,38 @@ function Storefront() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={tab}
-              initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -6, filter: "blur(3px)" }}
-              transition={{ duration: 0.24, ease: ease.out }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: ease.out }}
             >
               {(tab === "showroom" || tab === "offers") &&
                 (visible.length ? (
                   <>
                     {tab === "showroom" && !term && !sub && (
                       <p className="mb-4 text-[13px] text-ink-500">
-                        <b className="text-ink-900">Top {Math.min(10, products.length)}</b> showroom items · dukaan mein aakar dekhein, ya CLAIM karke WhatsApp par details paayein
+                        <b className="text-ink-900">Top {Math.min(10, products.length)}</b> showroom items · dukaan mein aakar dekhein, ya Claim karke WhatsApp par details paayein
                       </p>
                     )}
-                    <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 pt-1 md:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
-                      {visible.map((o) => (
-                        <div
+                    <div className="grid grid-cols-1 gap-4 pt-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-5 xl:grid-cols-4">
+                      {visible.map((o, i) => (
+                        <AppearItem
                           key={o.id}
-                          id={`offer-${o.id}`}
-                          className={cn(
-                            "h-full rounded-[22px] transition-shadow",
-                            ownerMode ? "scroll-mt-44" : "scroll-mt-32",
-                            o.id === focusOffer && "ring-4 ring-flame-500/70 ring-offset-4 ring-offset-surface",
-                          )}
+                          index={i}
+                          immediate={i < 4}
+                          className="h-full"
                         >
-                          <OfferCard offer={o} shop={shop} category={category} className="h-full" />
-                        </div>
+                          <div
+                            id={`offer-${o.id}`}
+                            className={cn(
+                              "h-full rounded-[26px] transition-shadow",
+                              ownerMode ? "scroll-mt-44" : "scroll-mt-32",
+                              o.id === focusOffer && "ring-4 ring-flame-500/70 ring-offset-4 ring-offset-surface",
+                            )}
+                          >
+                            <OfferCard offer={o} shop={shop} category={category} className="h-full" />
+                          </div>
+                        </AppearItem>
                       ))}
                     </div>
                   </>
@@ -558,7 +564,7 @@ function Storefront() {
 
       {/* Floating pill Follow CTA above the floating mobile bottom dock */}
       {!ownerMode && (
-        <div className="pointer-events-none fixed inset-x-4 bottom-[calc(82px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-[400px] lg:hidden">
+        <div className="pointer-events-none fixed inset-x-4 bottom-[calc(86px+env(safe-area-inset-bottom))] z-40 mx-auto max-w-[404px] lg:hidden">
           <motion.button
             type="button"
             whileTap={{ scale: 0.97 }}

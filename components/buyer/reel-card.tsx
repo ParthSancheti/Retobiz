@@ -32,7 +32,7 @@ export function ReelCard({ reel, shop, category, href, size = "md" }: { reel: Re
       <Link
         href={href}
         scroll={false}
-        className={`relative block aspect-[9/16] overflow-hidden rounded-[22px] bg-ink-900 shadow-soft transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_14px_34px_-10px_rgba(18,20,26,0.12)] active:scale-[0.98] ${size === "lg" ? "w-[176px] lg:w-[228px]" : "w-[150px] lg:w-[196px]"}`}
+        className={`relative block aspect-[9/16] overflow-hidden rounded-[24px] bg-ink-900 shadow-soft transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_14px_34px_-10px_rgba(18,20,26,0.12)] active:scale-[0.98] ${size === "lg" ? "w-[214px] lg:w-[236px]" : "w-[174px] lg:w-[200px]"}`}
       >
         <RetailImage
           imageKey={first?.imageKey}

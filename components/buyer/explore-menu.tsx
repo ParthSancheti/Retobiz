@@ -126,11 +126,11 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-label="Explore Retobiz"
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.985, filter: "blur(10px)" }}
-      animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, filter: "blur(0px)" }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.985, filter: "blur(8px)" }}
-      transition={{ duration: 0.28, ease: ease.out }}
-      className="fixed inset-0 z-[65] flex flex-col bg-white/92 backdrop-blur-2xl"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.99 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.99 }}
+      transition={{ duration: 0.22, ease: ease.out }}
+      className="fixed inset-0 z-40 flex flex-col bg-[#FFFDF9]/95 backdrop-blur-2xl"
     >
       {/* Header */}
       <div className="mx-auto flex h-16 w-full max-w-[680px] shrink-0 items-center justify-between border-b border-black/[0.06] px-5">
@@ -155,16 +155,16 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Scrollable full-screen body */}
-      <div className="mx-auto w-full max-w-[680px] flex-1 overflow-y-auto px-5 py-5 pb-10">
+      {/* Scrollable full-screen body — clears floating dock completely */}
+      <div className="mx-auto w-full max-w-[680px] flex-1 overflow-y-auto px-5 py-4 pb-36 lg:pb-10">
         {/* Buyer Profile + Location Pill Row */}
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-[24px] border border-black/[0.06] bg-white/90 p-3.5 shadow-[0_6px_24px_-8px_rgba(18,20,26,0.08)]">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-[22px] border border-black/[0.06] bg-white/90 p-3 shadow-[0_6px_24px_-8px_rgba(18,20,26,0.08)]">
           <button type="button" onClick={() => go("/passes")} className="flex min-w-0 flex-1 items-center gap-3 text-left">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/avatar-buyer.jpg"
               alt="Buyer profile"
-              className="size-12 shrink-0 rounded-full border border-saffron-400/50 bg-wash-cream object-cover object-top"
+              className="size-11 shrink-0 rounded-full border border-saffron-400/50 bg-wash-cream object-cover object-top"
             />
             <div className="min-w-0">
               <div className="truncate font-display text-[15px] font-bold text-ink-900">
@@ -194,7 +194,7 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Core Destinations */}
-        <div className="mb-6 grid grid-cols-2 gap-2.5">
+        <div className="mb-4 grid grid-cols-2 gap-2.5">
           {quickRoutes.map((item) => {
             const Icon = item.icon;
             return (
@@ -203,23 +203,23 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "relative flex items-center gap-2.5 rounded-[20px] border p-3 transition-all duration-200 active:scale-[0.98]",
+                  "relative flex items-center gap-2.5 rounded-[18px] border p-2.5 transition-all duration-200 active:scale-[0.98]",
                   item.active
-                    ? "border-ink-900 bg-ink-900 text-white shadow-soft"
+                    ? "border-transparent bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)] text-white shadow-[0_6px_18px_-6px_rgba(236,70,19,0.5)]"
                     : "border-black/[0.06] bg-white/90 text-ink-900 shadow-1 hover:border-black/[0.12]",
                 )}
               >
                 <span
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-xl",
-                    item.active ? "bg-white/15 text-saffron-400" : "bg-canvas text-ink-800",
+                    "flex size-8 shrink-0 items-center justify-center rounded-xl",
+                    item.active ? "bg-white/20 text-white" : "bg-canvas text-ink-800",
                   )}
                 >
-                  <Icon className="size-[18px]" strokeWidth={2} />
+                  <Icon className="size-4" strokeWidth={2} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13.5px] leading-[16px] font-bold">{item.label}</span>
-                  <span className={cn("mt-0.5 block text-[11px] leading-[14px]", item.active ? "text-white/70" : "text-ink-500")}>{item.sub}</span>
+                  <span className="block text-[13px] leading-[15px] font-bold">{item.label}</span>
+                  <span className={cn("mt-0.5 block text-[11px] leading-[13px]", item.active ? "text-white/80" : "text-ink-500")}>{item.sub}</span>
                 </span>
                 {item.badge != null && (
                   <span className="tabular absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-leaf-500 text-[10.5px] font-bold text-white">
@@ -232,7 +232,7 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* All 10 Local Categories */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2.5 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold tracking-[0.06em] text-ink-500 uppercase">
             <Compass className="size-3.5 text-flame-500" /> Browse Categories
           </span>
@@ -241,7 +241,7 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
           </Link>
         </div>
 
-        <div className="mb-7 grid grid-cols-2 gap-2.5">
+        <div className="mb-5 grid grid-cols-2 gap-2">
           {activeCats.map((cat) => {
             const Icon = GLYPHS[cat.glyph] ?? Store;
             return (
@@ -249,19 +249,19 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
                 key={cat.id}
                 href={`/category/${cat.slug}`}
                 onClick={onClose}
-                className="group flex items-center gap-2.5 rounded-[18px] border border-black/[0.06] bg-white/95 p-2.5 shadow-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                className="group flex items-center gap-2 rounded-[16px] border border-black/[0.06] bg-white/95 p-2 shadow-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
               >
-                <div className={cn("relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px]", WASH_BG[cat.wash])}>
+                <div className={cn("relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px]", WASH_BG[cat.wash])}>
                   {cat.imageKey ? (
-                    <RetailImage imageKey={cat.imageKey} size="thumb" wash={cat.wash} alt="" className="size-full rounded-[12px]" />
+                    <RetailImage imageKey={cat.imageKey} size="thumb" wash={cat.wash} alt="" className="size-full rounded-[10px]" />
                   ) : (
-                    <Icon className="size-4.5 text-ink-800" strokeWidth={1.85} />
+                    <Icon className="size-4 text-ink-800" strokeWidth={1.85} />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="line-clamp-2 text-[12.5px] leading-[15px] font-bold text-ink-900">{cat.name}</div>
+                  <div className="line-clamp-2 text-[12px] leading-[14px] font-bold text-ink-900">{cat.name}</div>
                   {cat.nameHi && (
-                    <div lang="hi" className="mt-0.5 font-deva text-[11px] leading-[14px] text-ink-500">
+                    <div lang="hi" className="mt-0.5 font-deva text-[10.5px] leading-[12px] text-ink-500">
                       {cat.nameHi}
                     </div>
                   )}
@@ -273,7 +273,7 @@ function ExplorePanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* List Your Shop CTA */}
-        <ButtonLink href="/list-your-shop" variant="primary-flame" size="lg" full onClick={onClose} icon={<Store className="size-5" />}>
+        <ButtonLink href="/list-your-shop" variant="primary-flame" size="md" full onClick={onClose} icon={<Store className="size-4.5" />} className="rounded-full">
           Apni Dukaan List Karein
         </ButtonLink>
 

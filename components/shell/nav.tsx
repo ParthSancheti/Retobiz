@@ -21,6 +21,7 @@ import {
   Truck,
   Users,
   Waypoints,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -76,7 +77,7 @@ export function isActive(item: NavItem, path: string) {
   return item.match ? item.match(path) : path === item.href || path.startsWith(item.href + "/");
 }
 
-/** Mobile bottom navigation: floating glass capsule for Buyer, flush bar for Merchant. */
+/** Mobile bottom navigation: warm frosted capsule for Buyer (stays above Explore), flush bar for Merchant. */
 export function BottomNav(props: { items: NavItem[]; id: string }) {
   return (
     <Suspense fallback={<BottomNavView {...props} path={null} />}>
@@ -98,25 +99,42 @@ function BottomNavView({ items, id, path }: { items: NavItem[]; id: string; path
     return (
       <nav
         aria-label="Mobile dock"
-        className="fixed inset-x-4 bottom-[max(12px,env(safe-area-inset-bottom))] z-40 mx-auto max-w-[400px] rounded-full border border-white/75 bg-white/85 px-2 py-1.5 shadow-[0_14px_38px_-10px_rgba(18,20,26,0.22),0_2px_8px_rgba(18,20,26,0.06)] backdrop-blur-2xl lg:hidden"
+        className="fixed inset-x-4 bottom-[max(12px,env(safe-area-inset-bottom))] z-[55] mx-auto max-w-[404px] rounded-full border border-[#EFE2C4]/90 bg-[#FFFDF8]/90 px-2 py-1.5 shadow-[0_14px_38px_-10px_rgba(92,45,8,0.18),0_2px_10px_rgba(245,180,0,0.14)] backdrop-blur-2xl lg:hidden"
       >
         <ul className="flex items-stretch justify-between gap-1">
           {items.map((item) => {
             const isExplore = item.action === "explore";
             const active = isExplore ? exploreOpen || (path != null && isActive(item, path)) : !exploreOpen && path != null && isActive(item, path);
-            const Icon = item.icon;
+            const Icon = isExplore && exploreOpen ? X : item.icon;
+            const label = isExplore && exploreOpen ? "Close" : item.label;
             const inner = (
               <>
                 {active && (
                   <motion.span
                     layoutId={`bnav-${id}`}
                     transition={spring.pill}
-                    className="absolute inset-0 rounded-full bg-ink-900 shadow-[0_4px_12px_-2px_rgba(18,20,26,0.35)]"
+                    className={cn(
+                      "absolute inset-0 rounded-full",
+                      isExplore && exploreOpen
+                        ? "bg-[#221A14] shadow-[0_6px_16px_-4px_rgba(34,26,20,0.4)]"
+                        : "bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)] shadow-[0_6px_16px_-4px_rgba(236,70,19,0.45)]",
+                    )}
                   />
                 )}
-                <Icon className={cn("relative size-[20px] transition-colors", active ? "text-saffron-400" : "text-ink-500")} strokeWidth={active ? 2.15 : 1.8} />
-                <span className={cn("relative text-[10.5px] leading-none font-bold transition-colors", active ? "text-white" : "text-ink-600")}>
-                  {item.label}
+                <Icon
+                  className={cn(
+                    "relative size-[19px] transition-colors",
+                    active ? (isExplore && exploreOpen ? "text-saffron-400" : "text-white") : "text-[#5C5044]",
+                  )}
+                  strokeWidth={active ? 2.25 : 1.85}
+                />
+                <span
+                  className={cn(
+                    "relative text-[10.5px] leading-none font-bold transition-colors",
+                    active ? "text-white" : "text-[#5C5044]",
+                  )}
+                >
+                  {label}
                 </span>
               </>
             );
@@ -129,6 +147,7 @@ function BottomNavView({ items, id, path }: { items: NavItem[]; id: string; path
                     onClick={() => setExploreOpen(!exploreOpen)}
                     aria-expanded={exploreOpen}
                     aria-haspopup="dialog"
+                    aria-label={exploreOpen ? "Close Explore" : "Explore"}
                     className="relative flex h-[50px] flex-1 flex-col items-center justify-center gap-1 rounded-full transition-transform active:scale-95"
                   >
                     {inner}

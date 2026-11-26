@@ -44,15 +44,21 @@ function Strip({ className }: { className?: string }) {
               className={cn(
                 "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap transition-all duration-200 active:scale-[0.97]",
                 active
-                  ? "border-ink-900 text-white"
-                  : "border-black/[0.08] bg-white/90 text-ink-900 shadow-[0_2px_8px_-4px_rgba(18,20,26,0.12)] hover:border-black/[0.15] hover:bg-white",
+                  ? "border-transparent text-white shadow-[0_4px_14px_-4px_rgba(236,70,19,0.45)]"
+                  : "border-[#EADEC6] bg-white/95 text-ink-900 shadow-[0_2px_8px_-4px_rgba(90,42,0,0.1)] hover:border-[#D9C7A3] hover:bg-white",
               )}
             >
-              {active && <motion.span layoutId="quick-pill" transition={spring.pill} className="absolute inset-0 rounded-full bg-ink-900" />}
+              {active && (
+                <motion.span
+                  layoutId="quick-pill"
+                  transition={spring.pill}
+                  className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)]"
+                />
+              )}
               <q.icon
                 className={cn(
                   "relative size-3.5",
-                  active ? "text-saffron-400" : q.key === "flash" ? "text-flame-500" : q.key === "verified" ? "text-indigo-600" : "text-saffron-700",
+                  active ? "text-white" : q.key === "flash" ? "text-flame-500" : q.key === "verified" ? "text-indigo-600" : "text-saffron-700",
                 )}
                 strokeWidth={2.25}
               />
