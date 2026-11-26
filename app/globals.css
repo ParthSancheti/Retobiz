@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ───────────────────────── Fonts (self-hosted, DESIGN §2.1) ─────────────────────────
+   latin-ext subsets carry the ₹ glyph (U+20B9). */
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 600; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 700; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 800; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-800-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 600; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-ext-600-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 700; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-ext-700-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 800; font-display: swap; src: url("/fonts/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 400; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 500; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 600; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 700; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 800; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-800-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 400; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-ext-400-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 500; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-ext-500-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 600; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-ext-600-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 700; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-ext-700-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 800; font-display: swap; src: url("/fonts/be-vietnam-pro-latin-ext-800-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+
+@font-face { font-family: "Mukta"; font-weight: 500; font-display: swap; src: url("/fonts/mukta-devanagari-500-normal.woff2") format("woff2"); unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09; }
+@font-face { font-family: "Mukta"; font-weight: 700; font-display: swap; src: url("/fonts/mukta-devanagari-700-normal.woff2") format("woff2"); unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09; }
+@font-face { font-family: "Mukta"; font-weight: 500; font-display: swap; src: url("/fonts/mukta-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+2000-206F; }
+@font-face { font-family: "Mukta"; font-weight: 700; font-display: swap; src: url("/fonts/mukta-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+2000-206F; }
+
+/* ───────────────────────── Tokens (DESIGN §1, §3, §11) ───────────────────────── */
+@theme {
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, sans-serif;
+  --font-sans: "Be Vietnam Pro", "Mukta", ui-sans-serif, sans-serif;
+  --font-deva: "Mukta", "Be Vietnam Pro", sans-serif;
+
+  --color-canvas: #f6f7fa;
+  --color-surface: #ffffff;
+  --color-sunk: #eef0f4;
+  --color-hairline: #e6e8ee;
+  --color-hairline-strong: #d5d8e0;
+
+  --color-ink-900: #12141a;
+  --color-ink-700: #3a3f4b;
+  --color-ink-500: #6b7180;
+  --color-ink-300: #a9aeba;
+
+  --color-indigo-50: #eef0fb;
+  --color-indigo-100: #dde1f7;
+  --color-indigo-500: #3b49c4;
+  --color-indigo-600: #2f3ba8;
+  --color-indigo-700: #252f86;
+
+  --color-flame-50: #fff1ec;
+  --color-flame-100: #ffdccf;
+  --color-flame-500: #ff5a2c;
+  --color-flame-600: #ec4613;
+  --color-flame-700: #c2370c;
+
+  --color-saffron-50: #fff8e1;
+  --color-saffron-100: #ffedb0;
+  --color-saffron-400: #ffc629;
+  --color-saffron-500: #f5b400;
+  --color-saffron-700: #8a6400;
+
+  --color-leaf-50: #eaf8ef;
+  --color-leaf-100: #cff0db;
+  --color-leaf-500: #1faa59;
+  --color-leaf-600: #168a47;
+  --color-leaf-700: #106b37;
+
+  --color-danger-50: #fef0ee;
+  --color-danger-600: #d92d20;
+
+  --color-wash-mint: #e3f6ec;
+  --color-wash-peach: #ffe9dd;
+  --color-wash-sky: #e3eefd;
+  --color-wash-cream: #fff6dc;
+  --color-wash-lavender: #eeeafb;
+
+  /* Consumer "bazaar" mode (DESIGN §12): warm saffron-tinted top canvas */
+  --color-bazaar: #fff1c9;
+  --color-bazaar-deep: #ffe39a;
+
+  --color-slate-900: #1e2436;
+  --color-slate-800: #2b3245;
+  --color-slate-600: #465069;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-1: 0 1px 2px rgb(18 20 26 / 0.06);
+  --shadow-2: 0 6px 16px -6px rgb(18 20 26 / 0.14);
+  --shadow-soft: 0 1px 2px rgb(18 20 26 / 0.04), 0 8px 24px -10px rgb(18 20 26 / 0.10);
+  --shadow-lift: 0 2px 6px rgb(18 20 26 / 0.05), 0 22px 44px -14px rgb(18 20 26 / 0.22);
+  --shadow-sheet: 0 -8px 32px -8px rgb(18 20 26 / 0.18);
+
+  --breakpoint-sm: 390px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ───────────────────────── Base ───────────────────────── */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas text-ink-700 font-sans antialiased;
+    font-size: 15px;
+    line-height: 22px;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-ink-900;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-indigo-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--color-saffron-100);
+    color: var(--color-ink-900);
+  }
+  [lang="hi"], [lang="mr"] {
+    font-family: var(--font-deva);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+@utility shadow-ground {
+  background: radial-gradient(closest-side, rgb(18 20 26 / 0.18), rgb(18 20 26 / 0));
+}
+
+/* Skeleton shimmer — the only sanctioned idle loop (DESIGN §5.3), capped by RetailImage/loading timers */
+@keyframes rb-shimmer {
+  from { background-position: -200px 0; }
+  to { background-position: calc(200px + 100%) 0; }
+}
+@utility skeleton {
+  background-color: var(--color-sunk);
+  background-image: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  animation: rb-shimmer 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Retobiz bazaar canvas: marigold → cream with a toran watermark (DESIGN §12.2, v2) */
+.bazaar-canvas {
+  background: linear-gradient(180deg, #ffc23d 0%, #ffd56e 38%, #ffe9b0 72%, #fff6df 100%);
+}
+.toran-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2272%22%20height%3D%2256%22%20viewBox%3D%220%200%2072%2056%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%235a2a00%22%20stroke-width%3D%221.4%22%3E%3Cpath%20d%3D%22M0%206%20Q9%2014%2018%206%20T36%206%20T54%206%20T72%206%22/%3E%3Cpath%20d%3D%22M9%2010%20L9%2018%20M27%2010%20L27%2018%20M45%2010%20L45%2018%20M63%2010%20L63%2018%22%20stroke-linecap%3D%22round%22/%3E%3C/g%3E%3Cg%20fill%3D%22%235a2a00%22%3E%3Cpath%20d%3D%22M9%2018%20l-4%206%204%207%204-7z%22/%3E%3Cpath%20d%3D%22M27%2018%20l-4%206%204%207%204-7z%22/%3E%3Cpath%20d%3D%22M45%2018%20l-4%206%204%207%204-7z%22/%3E%3Cpath%20d%3D%22M63%2018%20l-4%206%204%207%204-7z%22/%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2244%22%20r%3D%221.6%22/%3E%3Ccircle%20cx%3D%2254%22%20cy%3D%2244%22%20r%3D%221.6%22/%3E%3Cpath%20d%3D%22M36%2038%20l3%204%20-3%204%20-3%20-4z%22/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 56px;
+  background-repeat: repeat;
 }
