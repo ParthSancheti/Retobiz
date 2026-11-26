@@ -32,12 +32,16 @@ interface UiState {
   noteRemoteSync: () => void;
   pushToast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: string) => void;
-  /** Buyer overlays opened from the shared top bar. */
+  /** Buyer overlays opened from the shared top bar / bottom dock. */
   searchOpen: boolean;
   locationOpen: boolean;
+  exploreOpen: boolean;
+  shutterMuted: boolean;
   setSearchOpen: (v: boolean) => void;
   setLocationOpen: (v: boolean) => void;
-  /** One shared Follow/Claim sheet for every card (Zepto-style "ADD" → our opt-in). */
+  setExploreOpen: (v: boolean) => void;
+  toggleShutterMuted: () => void;
+  /** One shared Follow/Claim sheet for every card. */
   claim: { shopId: string; offerId?: string; source?: "qr" | "follow" } | null;
   openClaim: (shopId: string, offerId?: string, source?: "qr" | "follow") => void;
   closeClaim: () => void;
@@ -59,8 +63,12 @@ export const useUiStore = create<UiState>()((set) => ({
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })),
   searchOpen: false,
   locationOpen: false,
+  exploreOpen: false,
+  shutterMuted: false,
   setSearchOpen: (v) => set({ searchOpen: v }),
   setLocationOpen: (v) => set({ locationOpen: v }),
+  setExploreOpen: (v) => set({ exploreOpen: v }),
+  toggleShutterMuted: () => set((s) => ({ shutterMuted: !s.shutterMuted })),
   claim: null,
   openClaim: (shopId, offerId, source) => set({ claim: { shopId, offerId, source } }),
   closeClaim: () => set({ claim: null }),

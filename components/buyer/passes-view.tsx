@@ -65,7 +65,7 @@ function Passes() {
           {passes.map((c) => (
             <div key={c.id}>
               <VipPass customer={c} shop={shops[c.shopId]} lang={c.passLang} onLang={(l) => setPassLang(c.id, l)} />
-              <Link href={`/shop/${shops[c.shopId].slug}`} className="mt-2 inline-block text-[13px] font-bold text-indigo-600">
+              <Link href={`/shop/${shops[c.shopId].slug}?src=card`} className="mt-2 inline-block text-[13px] font-bold text-indigo-600">
                 Dukaan kholein →
               </Link>
             </div>

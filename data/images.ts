@@ -26,6 +26,9 @@ const c = (file: string, alt: string): RawImage => ({ file: `/images/${file}.web
 const r = (file: string, alt: string, focal: Focal = "center"): RawImage => ({ file: `/images/${file}.webp`, alt, tone: "photo", focal });
 
 const RAW = {
+  // ── Profile / Shell visuals ──
+  "avatar-buyer": { file: "/images/avatar-buyer.jpg", alt: "Buyer profile avatar", tone: "photo", focal: "top" },
+
   // ── Photoreal reel & UGC frames ──
   "reel-paithani-owner": r("reels/reel-paithani-owner", "Boutique owner holding up a red and gold Paithani saree", "top"),
   "reel-ugc-creator": r("reels/reel-ugc-creator", "Creator filming a review on a gimbal inside an apparel store", "top"),
@@ -164,6 +167,7 @@ const WIDTH: Record<ImageSize, number> = { thumb: 240, card: 600, cover: 1280, r
 export const USE_LOCAL_IMAGES = false;
 
 export function imageUrl(key: ImageKey, size: ImageSize = "card"): string {
+  if (!isImageKey(key)) return "";
   const { pexelsId, file } = IMAGES[key];
   if (file) return file;
   if (!pexelsId) return "";

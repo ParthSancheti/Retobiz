@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import {
   BadgePercent,
   Clapperboard,
+  Compass,
   Home,
   LayoutDashboard,
   Megaphone,
@@ -17,7 +18,6 @@ import {
   ShieldCheck,
   Store,
   Tags,
-  Ticket,
   Truck,
   Users,
   Waypoints,
@@ -25,11 +25,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { spring } from "@/lib/motion";
+import { useUiStore } from "@/store/ui";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  action?: "explore";
   /** Match nested routes. */
   match?: (path: string) => boolean;
 }
@@ -38,7 +40,7 @@ export const BUYER_NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home, match: (p) => p === "/" },
   { href: "/search", label: "Search", icon: Search, match: (p) => p.startsWith("/search") || p.startsWith("/category") },
   { href: "/offers", label: "Offers", icon: BadgePercent },
-  { href: "/passes", label: "My Passes", icon: Ticket },
+  { href: "#explore", label: "Explore", icon: Compass, action: "explore", match: (p) => p.startsWith("/passes") },
 ];
 
 export const MERCHANT_NAV: NavItem[] = [
@@ -74,9 +76,8 @@ export function isActive(item: NavItem, path: string) {
   return item.match ? item.match(path) : path === item.href || path.startsWith(item.href + "/");
 }
 
-/** Thumb-zone bottom nav, 64px + safe area, layoutId pill (DESIGN §6.2). */
+/** Mobile bottom navigation: floating glass capsule for Buyer, flush bar for Merchant. */
 export function BottomNav(props: { items: NavItem[]; id: string }) {
-  // usePathname must sit under Suspense on dynamic routes (Cache Components); fallback = no active pill.
   return (
     <Suspense fallback={<BottomNavView {...props} path={null} />}>
       <WithPath>{(path) => <BottomNavView {...props} path={path} />}</WithPath>
@@ -89,6 +90,67 @@ function WithPath({ children }: { children: (path: string) => React.ReactNode })
 }
 
 function BottomNavView({ items, id, path }: { items: NavItem[]; id: string; path: string | null }) {
+  const exploreOpen = useUiStore((s) => s.exploreOpen);
+  const setExploreOpen = useUiStore((s) => s.setExploreOpen);
+  const isBuyer = id === "buyer";
+
+  if (isBuyer) {
+    return (
+      <nav
+        aria-label="Mobile dock"
+        className="fixed inset-x-4 bottom-[max(12px,env(safe-area-inset-bottom))] z-40 mx-auto max-w-[400px] rounded-full border border-white/75 bg-white/85 px-2 py-1.5 shadow-[0_14px_38px_-10px_rgba(18,20,26,0.22),0_2px_8px_rgba(18,20,26,0.06)] backdrop-blur-2xl lg:hidden"
+      >
+        <ul className="flex items-stretch justify-between gap-1">
+          {items.map((item) => {
+            const isExplore = item.action === "explore";
+            const active = isExplore ? exploreOpen || (path != null && isActive(item, path)) : !exploreOpen && path != null && isActive(item, path);
+            const Icon = item.icon;
+            const inner = (
+              <>
+                {active && (
+                  <motion.span
+                    layoutId={`bnav-${id}`}
+                    transition={spring.pill}
+                    className="absolute inset-0 rounded-full bg-ink-900 shadow-[0_4px_12px_-2px_rgba(18,20,26,0.35)]"
+                  />
+                )}
+                <Icon className={cn("relative size-[20px] transition-colors", active ? "text-saffron-400" : "text-ink-500")} strokeWidth={active ? 2.15 : 1.8} />
+                <span className={cn("relative text-[10.5px] leading-none font-bold transition-colors", active ? "text-white" : "text-ink-600")}>
+                  {item.label}
+                </span>
+              </>
+            );
+
+            return (
+              <li key={item.href} className="flex flex-1">
+                {isExplore ? (
+                  <button
+                    type="button"
+                    onClick={() => setExploreOpen(!exploreOpen)}
+                    aria-expanded={exploreOpen}
+                    aria-haspopup="dialog"
+                    className="relative flex h-[50px] flex-1 flex-col items-center justify-center gap-1 rounded-full transition-transform active:scale-95"
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setExploreOpen(false)}
+                    className="relative flex h-[50px] flex-1 flex-col items-center justify-center gap-1 rounded-full transition-transform active:scale-95"
+                  >
+                    {inner}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Primary"

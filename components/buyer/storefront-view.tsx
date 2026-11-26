@@ -19,6 +19,8 @@ import {
   Share2,
   Star,
   Users,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,13 +32,14 @@ import { cn } from "@/lib/cn";
 import { formatCompactIN, formatDistance, timeAgo } from "@/lib/format";
 import { haversineKm } from "@/lib/geo";
 import { openStatus } from "@/lib/hours";
-import { spring } from "@/lib/motion";
+import { ease, spring } from "@/lib/motion";
 import { Hydrated } from "@/components/shell/hydrated";
 import { FilterChip } from "@/components/ui/chip";
 import { Badge, GoogleBadge, GstBadge, ProBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { LiveFlash, Skeleton } from "@/components/ui/misc";
+import { BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
 import { RetailImage } from "@/components/media/retail-image";
 import { OfferCard, OfferCardSkeleton, ribbonLabel } from "./offer-card";
 import { ReelCard } from "./reel-card";
@@ -97,9 +100,10 @@ function Storefront() {
   const activeMerchantShopId = useStore((s) => s.activeMerchantShopId);
   const trackView = useStore((s) => s.trackView);
   const trackQrScan = useStore((s) => s.trackQrScan);
-  const seenShutter = useUiStore((s) => s.seenShutterShopIds);
   const markShutterSeen = useUiStore((s) => s.markShutterSeen);
   const openClaim = useUiStore((s) => s.openClaim);
+  const shutterMuted = useUiStore((s) => s.shutterMuted);
+  const toggleShutterMuted = useUiStore((s) => s.toggleShutterMuted);
   const { catById, locById } = useLookups();
 
   const shop = useMemo(() => Object.values(shops).find((s) => s.slug === slug), [shops, slug]);
@@ -110,9 +114,9 @@ function Storefront() {
 
   const following = useStore((s) => !!shop && s.buyerPassIds.some((id) => s.customers[id]?.shopId === shop.id));
 
-  // Shutter plays directly on top of already-painted storefront (zero blank white flash).
+  // Always play the rolling shutter when entering a buyer storefront (skip only quiet owner-mode preview without QR).
   const [shutterSeq, setShutterSeq] = useState(0);
-  const [shutterOpen, setShutterOpen] = useState(() => !!shop && (fromQr || params.get("src") === "card" || !seenShutter.includes(shop.id)));
+  const [shutterOpen, setShutterOpen] = useState(() => !!shop && (!ownerMode || fromQr));
   const [shutterDone, setShutterDone] = useState(() => !shutterOpen);
 
   const tracked = useRef(false);
@@ -148,14 +152,14 @@ function Storefront() {
   const [q, setQ] = useState("");
   const [sub, setSub] = useState<string | undefined>();
 
-  // Smoothly scroll to a deep-linked offer ONLY after the shutter fully finishes (~900ms).
+  // Smoothly scroll to a deep-linked offer ONLY after the shutter fully finishes.
   const scrolledFocusRef = useRef<string | null>(null);
   useEffect(() => {
     if (!shutterDone || !focusOffer || scrolledFocusRef.current === focusOffer) return;
     scrolledFocusRef.current = focusOffer;
     const t = setTimeout(() => {
       document.getElementById(`offer-${focusOffer}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
+    }, 90);
     return () => clearTimeout(t);
   }, [shutterDone, focusOffer]);
 
@@ -203,6 +207,12 @@ function Storefront() {
     }
   };
 
+  const replayShutter = () => {
+    setShutterDone(false);
+    setShutterSeq((s) => s + 1);
+    setShutterOpen(true);
+  };
+
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "showroom", label: "Showroom", count: products.length },
     { id: "offers", label: "Offers", count: promos.length },
@@ -211,141 +221,150 @@ function Storefront() {
   ];
 
   return (
-    <div className={cn("pb-28 lg:pb-10", ownerMode && "pt-0")}>
+    <div className={cn("pb-36 lg:pb-12", ownerMode && "pt-0")}>
       <Shutter shop={shop} category={category} open={shutterOpen} runKey={shutterSeq} onDone={onShutterDone} />
 
-      {ownerMode && <OwnerModeBar views={shop.stats.views7d} delay={shutterOpen ? 0.85 : 0} />}
+      {ownerMode && <OwnerModeBar views={shop.stats.views7d} delay={shutterOpen ? 1.05 : 0} />}
 
       <div>
         {/* Top utility row */}
         <div className="flex items-center justify-between gap-2 pt-3 pb-3 lg:pt-5">
           <Link href="/" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sunk px-3 text-[13px] font-bold whitespace-nowrap text-ink-900 transition-colors hover:bg-hairline">
-            <ArrowLeft className="size-4" /> <span className="md:hidden">Aas-paas ki dukaanein</span><span className="hidden md:inline">Explore All Nearby Shops</span>
+            <ArrowLeft className="size-4" /> <span className="md:hidden">Nearby Shops</span><span className="hidden md:inline">Explore All Nearby Shops</span>
           </Link>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => {
-                setShutterDone(false);
-                setShutterSeq((s) => s + 1);
-                setShutterOpen(true);
-              }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-ink-500 transition-colors hover:bg-sunk hover:text-ink-900"
+              onClick={toggleShutterMuted}
+              aria-label={shutterMuted ? "Unmute shutter sound" : "Mute shutter sound"}
+              title={shutterMuted ? "Unmute shutter sound" : "Mute shutter sound"}
+              className="flex size-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-sunk hover:text-ink-900"
             >
-              <RotateCcw className="size-3.5" /> <span className="hidden md:inline">Replay shutter</span>
+              {shutterMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
             </button>
-            <button type="button" onClick={share} aria-label="Share" className="flex size-9 items-center justify-center rounded-full transition-colors hover:bg-sunk">
+            <button
+              type="button"
+              onClick={replayShutter}
+              aria-label="Replay shop shutter"
+              title="Replay shop shutter"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sunk/70 px-3 text-[12.5px] font-semibold text-ink-700 transition-colors hover:bg-sunk hover:text-ink-900"
+            >
+              <RotateCcw className="size-3.5" /> <span>Shutter</span>
+            </button>
+            <button type="button" onClick={share} aria-label="Share shop" className="flex size-9 items-center justify-center rounded-full transition-colors hover:bg-sunk">
               <Share2 className="size-4" />
             </button>
           </div>
         </div>
 
         {/* Cover / profile: balanced 2-column editorial flex/grid */}
-        <section className={cn("relative overflow-hidden rounded-[28px] border border-black/[0.05] shadow-soft", COVER_TINT[category?.wash ?? "cream"])}>
-          <div className="flex flex-col items-stretch justify-between gap-6 p-5 md:flex-row md:items-center md:p-7 lg:gap-10 lg:p-9">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start gap-3.5">
-                <ShopMonogram shop={shop} wash={category?.wash ?? "cream"} size={60} className="bg-white shadow-1" />
-                <div className="min-w-0">
-                  <div className="text-[11px] font-bold tracking-[0.08em] text-ink-900/60 uppercase">{category?.name}</div>
-                  <h1 className="text-[24px] leading-[28px] font-extrabold tracking-[-0.02em] lg:text-[36px] lg:leading-[40px]">{shop.name}</h1>
-                  {shop.tagline && <p className="mt-1 text-[13.5px] font-medium text-ink-700 lg:text-[15px]">{shop.tagline}</p>}
+        <BlurEntrance>
+          <section className={cn("relative overflow-hidden rounded-[28px] border border-black/[0.05] shadow-soft", COVER_TINT[category?.wash ?? "cream"])}>
+            <div className="flex flex-col items-stretch justify-between gap-6 p-5 md:flex-row md:items-center md:p-7 lg:gap-10 lg:p-9">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-3.5">
+                  <ShopMonogram shop={shop} wash={category?.wash ?? "cream"} size={60} className="bg-white shadow-1" />
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold tracking-[0.08em] text-ink-900/60 uppercase">{category?.name}</div>
+                    <h1 className="text-[24px] leading-[28px] font-extrabold tracking-[-0.02em] lg:text-[36px] lg:leading-[40px]">{shop.name}</h1>
+                    {shop.tagline && <p className="mt-1 text-[13.5px] font-medium text-ink-700 lg:text-[15px]">{shop.tagline}</p>}
+                  </div>
+                </div>
+
+                <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+                  {shop.isVerified && <Badge tone="indigo" icon={<BadgeCheck className="size-3.5" strokeWidth={2} />}>Verified</Badge>}
+                  {shop.verification.gst && <GstBadge />}
+                  {shop.verification.google && <GoogleBadge />}
+                  {shop.plan === "pro" && <ProBadge />}
+                  {shop.verification.status === "pending" && <Badge tone="saffron">Verification pending</Badge>}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+                  {shop.rating != null && (
+                    <span className="tabular inline-flex h-6 items-center gap-0.5 rounded-md bg-leaf-600 px-1.5 font-extrabold text-white">
+                      {shop.rating.toFixed(1)} <Star className="size-3 fill-white" strokeWidth={0} />
+                      <span className="ml-1 text-[11px] font-semibold text-white/85">({shop.ratingCount})</span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 font-semibold text-ink-900">
+                    <Users className="size-4 text-ink-500" />
+                    <LiveFlash watch={followers}>
+                      <span className="tabular">{formatCompactIN(followers)}</span>
+                    </LiveFlash>{" "}
+                    followers
+                  </span>
+                  <span className={cn("inline-flex items-center gap-1 font-semibold", status.open ? "text-leaf-700" : "text-danger-600")}>
+                    <Clock className="size-4" /> {status.label}
+                  </span>
+                </div>
+
+                <p className="mt-2.5 flex items-start gap-1.5 text-[12.5px] text-ink-700">
+                  <MapPin className="mt-0.5 size-3.5 shrink-0 text-flame-600" />
+                  <span>
+                    {fullAddress}
+                    {shop.landmark && ` · ${shop.landmark}`}
+                    {distance != null && <b className="tabular whitespace-nowrap text-ink-900"> · {formatDistance(distance)}</b>}
+                  </span>
+                </p>
+
+                {/* Actions */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {ownerMode ? (
+                    <span className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white/75 px-3.5 text-[13px] font-semibold text-ink-700">
+                      Aap owner hain — buyers ko yahan Follow button dikhega
+                    </span>
+                  ) : (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => openClaim(shop.id)}
+                      className={cn(
+                        "inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[14px] font-bold shadow-1 transition-colors",
+                        following ? "bg-white text-leaf-700" : "bg-leaf-500 text-white hover:bg-leaf-600",
+                      )}
+                    >
+                      {following ? <Check className="size-4" strokeWidth={2.5} /> : <MessageCircle className="size-[18px]" strokeWidth={2.25} />}
+                      {following ? "Following · VIP" : "Follow & WhatsApp pe Offers"}
+                    </motion.button>
+                  )}
+                  <a href={`tel:+91${shop.phone}`} className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-[13.5px] font-bold text-ink-900 shadow-1 transition-colors hover:bg-white/85">
+                    <Phone className="size-4" /> Call
+                  </a>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${shop.geo.lat},${shop.geo.lng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-[13.5px] font-bold text-indigo-600 shadow-1 transition-colors hover:bg-white/85"
+                  >
+                    <Navigation className="size-4" /> Raasta
+                  </a>
                 </div>
               </div>
 
-              <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
-                {shop.isVerified && <Badge tone="indigo" icon={<BadgeCheck className="size-3.5" strokeWidth={2} />}>Verified</Badge>}
-                {shop.verification.gst && <GstBadge />}
-                {shop.verification.google && <GoogleBadge />}
-                {shop.plan === "pro" && <ProBadge />}
-                {shop.verification.status === "pending" && <Badge tone="saffron">Verification pending</Badge>}
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
-                {shop.rating != null && (
-                  <span className="tabular inline-flex h-6 items-center gap-0.5 rounded-md bg-leaf-600 px-1.5 font-extrabold text-white">
-                    {shop.rating.toFixed(1)} <Star className="size-3 fill-white" strokeWidth={0} />
-                    <span className="ml-1 text-[11px] font-semibold text-white/85">({shop.ratingCount})</span>
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-1 font-semibold text-ink-900">
-                  <Users className="size-4 text-ink-500" />
-                  <LiveFlash watch={followers}>
-                    <span className="tabular">{formatCompactIN(followers)}</span>
-                  </LiveFlash>{" "}
-                  followers
-                </span>
-                <span className={cn("inline-flex items-center gap-1 font-semibold", status.open ? "text-leaf-700" : "text-danger-600")}>
-                  <Clock className="size-4" /> {status.label}
-                </span>
-              </div>
-
-              <p className="mt-2.5 flex items-start gap-1.5 text-[12.5px] text-ink-700">
-                <MapPin className="mt-0.5 size-3.5 shrink-0 text-flame-600" />
-                <span>
-                  {fullAddress}
-                  {shop.landmark && ` · ${shop.landmark}`}
-                  {distance != null && <b className="tabular whitespace-nowrap text-ink-900"> · {formatDistance(distance)}</b>}
-                </span>
-              </p>
-
-              {/* Actions */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {ownerMode ? (
-                  <span className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white/75 px-3.5 text-[13px] font-semibold text-ink-700">
-                    Aap owner hain — buyers ko yahan Follow button dikhega
-                  </span>
-                ) : (
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => openClaim(shop.id)}
-                    className={cn(
-                      "inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[14px] font-bold shadow-1 transition-colors",
-                      following ? "bg-white text-leaf-700" : "bg-leaf-500 text-white hover:bg-leaf-600",
-                    )}
-                  >
-                    {following ? <Check className="size-4" strokeWidth={2.5} /> : <MessageCircle className="size-[18px]" strokeWidth={2.25} />}
-                    {following ? "Following · VIP" : "Follow & WhatsApp pe Offers"}
-                  </motion.button>
-                )}
-                <a href={`tel:+91${shop.phone}`} className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-[13.5px] font-bold text-ink-900 shadow-1 transition-colors hover:bg-white/85">
-                  <Phone className="size-4" /> Call
-                </a>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${shop.geo.lat},${shop.geo.lng}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-3.5 text-[13.5px] font-bold text-indigo-600 shadow-1 transition-colors hover:bg-white/85"
-                >
-                  <Navigation className="size-4" /> Raasta
-                </a>
+              {/* Editorial product showcase frame */}
+              <div className="relative w-full shrink-0 md:w-[320px] lg:w-[460px] xl:w-[500px]">
+                <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[22px] border border-white/70 bg-white/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-sm md:aspect-[16/10] lg:p-5">
+                  <div aria-hidden className="absolute aspect-square w-[56%] rounded-full bg-white/65 shadow-[0_0_40px_rgba(255,255,255,0.45)]" />
+                  <RetailImage
+                    imageKey={shop.coverImageKey}
+                    mode="cover"
+                    size="cover"
+                    wash={category?.wash ?? "cream"}
+                    alt={shop.name}
+                    priority
+                    className="relative z-10 h-full w-full bg-transparent"
+                  />
+                  {promos[0] && (
+                    <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 py-1 text-[11.5px] font-bold text-ink-900 shadow-1 backdrop-blur-md">
+                      <span className="size-2 rounded-full bg-flame-500" />
+                      {ribbonLabel(promos[0]) ?? "Featured Offer"} · {promos.length} live
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Editorial product showcase frame */}
-            <div className="relative w-full shrink-0 md:w-[320px] lg:w-[460px] xl:w-[500px]">
-              <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[22px] border border-white/70 bg-white/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-sm md:aspect-[16/10] lg:p-5">
-                <div aria-hidden className="absolute aspect-square w-[56%] rounded-full bg-white/65 shadow-[0_0_40px_rgba(255,255,255,0.45)]" />
-                <RetailImage
-                  imageKey={shop.coverImageKey}
-                  mode="cover"
-                  size="cover"
-                  wash={category?.wash ?? "cream"}
-                  alt={shop.name}
-                  priority
-                  className="relative z-10 h-full w-full bg-transparent"
-                />
-                {promos[0] && (
-                  <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 py-1 text-[11.5px] font-bold text-ink-900 shadow-1 backdrop-blur-md">
-                    <span className="size-2 rounded-full bg-flame-500" />
-                    {ribbonLabel(promos[0]) ?? "Featured Offer"} · {promos.length} live
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </BlurEntrance>
 
         {/* Live offers ribbon */}
         {promos.length > 0 && (
@@ -379,7 +398,7 @@ function Storefront() {
               >
                 <span className="rounded-full bg-gradient-to-tr from-saffron-400 via-flame-500 to-indigo-500 p-[2.5px]">
                   <span className="block rounded-full bg-surface p-[2px]">
-                    <RetailImage imageKey={r.frames[0]?.imageKey} mode="cover" size="thumb" wash={category?.wash ?? "cream"} alt="" className="size-16 rounded-full" />
+                    <RetailImage imageKey={r.frames[0]?.imageKey} mode="cover" size="thumb" wash={category?.wash ?? "cream"} alt="" priority className="size-16 rounded-full" />
                   </span>
                 </span>
                 <span className="line-clamp-2 text-center text-[11px] leading-[13px] font-semibold text-ink-700">{r.caption}</span>
@@ -388,10 +407,10 @@ function Storefront() {
           </div>
         )}
 
-        {/* Sticky tabs — aligned strictly below h-16 navbar (and OwnerModeBar if active) */}
+        {/* Sticky tabs */}
         <div
           className={cn(
-            "sticky z-20 -mx-4 mt-5 border-b border-hairline bg-surface/95 px-4 backdrop-blur-md lg:mx-0 lg:px-0",
+            "sticky z-20 -mx-4 mt-5 border-b border-hairline bg-surface/90 px-4 backdrop-blur-xl lg:mx-0 lg:px-0",
             ownerMode ? "top-28" : "top-16",
           )}
         >
@@ -435,7 +454,13 @@ function Storefront() {
 
         <div className="mt-5 pt-2">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -6, filter: "blur(3px)" }}
+              transition={{ duration: 0.24, ease: ease.out }}
+            >
               {(tab === "showroom" || tab === "offers") &&
                 (visible.length ? (
                   <>
@@ -444,7 +469,7 @@ function Storefront() {
                         <b className="text-ink-900">Top {Math.min(10, products.length)}</b> showroom items · dukaan mein aakar dekhein, ya CLAIM karke WhatsApp par details paayein
                       </p>
                     )}
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-1 md:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 pt-1 md:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
                       {visible.map((o) => (
                         <div
                           key={o.id}
@@ -495,8 +520,8 @@ function Storefront() {
           </AnimatePresence>
         </div>
 
-        {/* Keep exploring — QR scanners are never trapped in one store */}
-        <section className="mt-10 rounded-3xl bg-canvas p-4 lg:p-6">
+        {/* Keep exploring */}
+        <ScrollBlurSection exitFade={false} className="mt-10 rounded-3xl bg-canvas p-4 lg:p-6">
           <div className="mb-4 flex items-end justify-between">
             <div>
               <div className="text-[11px] font-bold tracking-[0.08em] text-ink-500 uppercase">Aas-paas aur bhi</div>
@@ -528,19 +553,21 @@ function Storefront() {
           <ButtonLink href="/" variant="secondary" className="mt-5 w-full justify-center" icon={<ArrowLeft className="size-4" />}>
             Explore All Nearby Shops
           </ButtonLink>
-        </section>
+        </ScrollBlurSection>
       </div>
 
-      {/* Mobile sticky CTA */}
+      {/* Floating pill Follow CTA above the floating mobile bottom dock */}
       {!ownerMode && (
-        <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-30 border-t border-hairline bg-surface/95 px-4 py-2.5 backdrop-blur lg:hidden">
+        <div className="pointer-events-none fixed inset-x-4 bottom-[calc(82px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-[400px] lg:hidden">
           <motion.button
             type="button"
             whileTap={{ scale: 0.97 }}
             onClick={() => openClaim(shop.id)}
             className={cn(
-              "flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-bold",
-              following ? "bg-saffron-100 text-ink-900" : "bg-leaf-500 text-white",
+              "pointer-events-auto flex h-12 w-full items-center justify-center gap-2 rounded-full border text-[14px] font-bold shadow-[0_12px_30px_-8px_rgba(18,20,26,0.28)] backdrop-blur-xl",
+              following
+                ? "border-saffron-400/50 bg-saffron-100/95 text-ink-900"
+                : "border-leaf-500/30 bg-leaf-500/95 text-white",
             )}
           >
             {following ? "Mera VIP Pass dekhein" : (

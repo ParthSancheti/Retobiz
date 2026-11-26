@@ -24,7 +24,7 @@ const PANEL: Record<Category["wash"], string> = {
 
 /**
  * Store card — uniform height, crisp Verified + discount + rating alignment,
- * GPU-smooth Apple hover lift, and aligned WhatsApp Offers / Number / Directions actions.
+ * GPU-smooth Apple hover lift, and properly bounded WhatsApp / Call / Raasta actions.
  */
 export function ShopCoverCard({
   shop,
@@ -41,7 +41,6 @@ export function ShopCoverCard({
   distanceKm?: number;
   topDeal?: string;
   liveOffers: number;
-  /** Kept for API compatibility; follow now opens the shared claim sheet. */
   onFollow?: () => void;
   className?: string;
 }) {
@@ -123,23 +122,23 @@ export function ShopCoverCard({
           </div>
         </div>
 
-        {/* Justdial-style action row — uniformly pinned to bottom */}
-        <div className="mt-4 grid grid-cols-[1.45fr_1fr_auto] items-center gap-2 border-t border-black/[0.05] pt-3">
+        {/* Clean bounded action row — never overflows narrow 3-column desktop cards */}
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 border-t border-black/[0.05] pt-3">
           <motion.button
             type="button"
             whileTap={{ scale: 0.96 }}
             transition={spring.snappy}
             onClick={() => !following && openClaim(shop.id)}
             className={cn(
-              "inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[12.5px] font-bold whitespace-nowrap transition-colors",
+              "inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-bold whitespace-nowrap transition-colors",
               following ? "bg-leaf-50 text-leaf-700" : "bg-leaf-500 text-white hover:bg-leaf-600",
             )}
           >
-            {following ? <Check className="size-4 shrink-0" strokeWidth={2.5} /> : <MessageCircle className="size-4 shrink-0" strokeWidth={2.25} />}
-            <span>{following ? "Following" : "WhatsApp Offers"}</span>
+            {following ? <Check className="size-3.5 shrink-0" strokeWidth={2.5} /> : <MessageCircle className="size-3.5 shrink-0" strokeWidth={2.25} />}
+            <span className="truncate">{following ? "Following" : "WhatsApp"}</span>
           </motion.button>
           {showPhone ? (
-            <a href={`tel:+91${shop.phone}`} className="tabular inline-flex h-9 items-center justify-center rounded-full border border-leaf-500 px-2 text-[12px] font-bold whitespace-nowrap text-leaf-700">
+            <a href={`tel:+91${shop.phone}`} className="tabular inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-leaf-500 px-2.5 text-[11.5px] font-bold whitespace-nowrap text-leaf-700">
               {shop.phone.slice(0, 5)} {shop.phone.slice(5)}
             </a>
           ) : (
@@ -148,9 +147,9 @@ export function ShopCoverCard({
               whileTap={{ scale: 0.96 }}
               transition={spring.snappy}
               onClick={() => setShowPhone(true)}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-hairline-strong px-2.5 text-[12.5px] font-bold whitespace-nowrap text-ink-900 transition-colors hover:border-ink-900"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-full border border-hairline-strong px-3 text-[12px] font-bold whitespace-nowrap text-ink-900 transition-colors hover:border-ink-900"
             >
-              <Phone className="size-3.5 shrink-0" strokeWidth={2.25} /> Number
+              <Phone className="size-3.5 shrink-0" strokeWidth={2.25} /> Call
             </motion.button>
           )}
           <a

@@ -47,7 +47,7 @@ export function OfferCard({
   const openClaim = useUiStore((s) => s.openClaim);
   const ribbon = ribbonLabel(offer);
   const left = daysLeft(offer.validTill);
-  const href = `/shop/${shop.slug}?offer=${offer.id}`;
+  const href = `/shop/${shop.slug}?offer=${offer.id}&src=card`;
 
   return (
     <article

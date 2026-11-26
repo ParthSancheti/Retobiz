@@ -78,7 +78,7 @@ function Panel({ onClose }: { onClose: () => void }) {
         id: r.offer.id,
         label: r.offer.title,
         sub: r.shop.name,
-        href: `/shop/${r.shop.slug}?offer=${r.offer.id}`,
+        href: `/shop/${r.shop.slug}?offer=${r.offer.id}&src=card`,
         imageKey: r.offer.imageKey,
         wash: catById[r.offer.categoryId]?.wash ?? "cream",
         price: r.offer.price != null ? formatINR(r.offer.price) : r.offer.discountPct ? `${r.offer.discountPct}% off` : undefined,

@@ -1,12 +1,12 @@
 "use client";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
-import { BadgeCheck, MapPin, Search, SlidersHorizontal, Sparkles, Store, X } from "lucide-react";
+import { motion } from "motion/react";
+import { MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/store";
 import { useUiStore } from "@/store/ui";
 import { searchOffers, searchShops, type DiscoveryFilters } from "@/store/selectors";
-import type { Category, Location } from "@/lib/types";
+import type { Category } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { spring } from "@/lib/motion";
 import { FilterChip } from "@/components/ui/chip";
@@ -15,6 +15,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/misc";
+import { BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
 import { Hydrated } from "@/components/shell/hydrated";
 import { RetailImage } from "@/components/media/retail-image";
 import { CategoryStrip } from "./category-strip";
@@ -127,13 +128,13 @@ function CategoryDiscovery() {
 function DiscoverySkeleton() {
   return (
     <div className="pt-4" aria-busy>
-      <Skeleton className="h-12 rounded-md" />
+      <Skeleton className="h-[140px] rounded-[24px]" />
       <div className="mt-4 flex gap-2">
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-8 w-24 rounded-full" />
+          <Skeleton key={i} className="h-9 w-24 rounded-full" />
         ))}
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => (
           <OfferCardSkeleton key={i} />
         ))}
@@ -156,7 +157,6 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
   const [followShopId, setFollowShopId] = useState<string | null>(null);
   const [followOpen, setFollowOpen] = useState(false);
 
-  // Debounced local query → URL
   const [qDraft, setQDraft] = useState(st.q);
   useEffect(() => {
     if (qDraft === st.q) return;
@@ -165,7 +165,6 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qDraft]);
 
-  // Resolve location scope (IMPLEMENTATION_PLAN §3.4)
   const scopeLoc = st.loc ? locById[st.loc] : undefined;
   const isAreaScope = !scopeLoc || scopeLoc.level === "area";
   const originAreaId = scopeLoc?.level === "area" ? scopeLoc.id : buyerLocation.areaId;
@@ -174,6 +173,7 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
   const filters: DiscoveryFilters = useMemo(
     () => ({
       q: st.q || undefined,
+      kind: mode === "offers" ? "offer" : undefined,
       categoryId: st.cat,
       subCategoryId: st.sub,
       locationId: scopeLoc && scopeLoc.level !== "area" ? scopeLoc.id : undefined,
@@ -186,7 +186,7 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
       shopId: st.shop,
       sort: st.sort,
     }),
-    [st.q, st.cat, st.sub, scopeLoc, originAreaId, radius, st.disc, st.max, st.v, st.live, st.shop, st.sort],
+    [mode, st.q, st.cat, st.sub, scopeLoc, originAreaId, radius, st.disc, st.max, st.v, st.live, st.shop, st.sort],
   );
 
   const offerResults = useMemo(() => searchOffers(ctx, filters), [ctx, filters]);
@@ -196,13 +196,7 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
 
   const subs = st.cat ? ctx.subCategories.filter((s) => s.categoryId === st.cat && s.active) : [];
   const activeCount = [st.cat && st.cat !== category?.id, st.sub, st.loc, st.r != null, st.disc, st.max, st.v, st.live, st.shop].filter(Boolean).length;
-  const scopeLabel = scopeLoc && scopeLoc.level !== "area" ? `Poora ${scopeLoc.name}` : `${locById[originAreaId]?.name ?? "Akurdi"} · ${radius ? `${radius} km` : "koi limit nahi"}`;
-
-  const shopsWithOffers = useMemo(() => {
-    if (mode !== "offers") return [];
-    const ids = new Set(searchOffers(ctx, { ...filters, shopId: undefined }).map((r) => r.shop.id));
-    return [...ids].map((id) => ctx.shops[id]).slice(0, 12);
-  }, [mode, ctx, filters]);
+  const scopeLabel = scopeLoc && scopeLoc.level !== "area" ? `Poora ${scopeLoc.name}` : `${locById[originAreaId]?.name ?? "Akurdi"} · ${radius ? `${radius} km` : "All"}`;
 
   const clearAll = () => {
     setQDraft("");
@@ -210,23 +204,20 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
   };
 
   return (
-    <div className="pt-4 pb-6 lg:pt-6">
-      {mode === "category" && category && <CategoryHero category={category} count={offerResults.length} shops={shopResults.length} />}
-      {mode === "offers" && (
-        <>
-          <OffersHero count={offerResults.length} />
-          <CategoryStrip className="mb-4" />
-        </>
-      )}
+    <div className="pt-4 pb-8 lg:pt-6">
+      <BlurEntrance>
+        {mode === "category" && category && <CategoryHero category={category} count={offerResults.length} shops={shopResults.length} />}
+        {mode === "offers" && <OffersHero count={offerResults.length} scopeLabel={scopeLabel} />}
+      </BlurEntrance>
 
-      {/* Search input */}
-      <div className="flex items-center gap-2">
-        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-md bg-surface px-3.5 shadow-1 ring-1 ring-ink-900/5 focus-within:ring-2 focus-within:ring-indigo-500">
-          <Search className="size-[18px] text-ink-900" strokeWidth={2} />
+      {/* Clean Search + Single Filters Button (replaces 6 stacked filter walls!) */}
+      <BlurEntrance delay={0.04} className="flex items-center gap-2.5">
+        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-black/[0.06] bg-white/95 px-4 shadow-soft backdrop-blur-md transition-colors focus-within:border-indigo-500">
+          <Search className="size-[18px] shrink-0 text-ink-900" strokeWidth={2} />
           <input
             value={qDraft}
             onChange={(e) => setQDraft(e.target.value)}
-            placeholder={mode === "category" && category ? `${category.name} mein dhoondhein…` : mode === "offers" ? "Offer dhoondhein — saree, mithai, cover…" : "Saree, chappal, kaju katli, dukaan…"}
+            placeholder={mode === "category" && category ? `${category.name} mein dhoondhein…` : mode === "offers" ? "Search offers — saree, mithai, cover…" : "Search shops, sarees, mithai…"}
             aria-label="Search"
             className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-ink-900 outline-none placeholder:text-ink-300"
             enterKeyHint="search"
@@ -237,85 +228,62 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
             </button>
           )}
         </label>
+
+        <button
+          type="button"
+          onClick={() => useUiStore.getState().setLocationOpen(true)}
+          className="hidden h-12 shrink-0 items-center gap-1.5 rounded-2xl border border-black/[0.06] bg-white px-3.5 text-[13.5px] font-bold text-ink-900 shadow-soft transition-colors hover:bg-canvas sm:inline-flex lg:hidden"
+        >
+          <MapPin className="size-4 text-flame-600" />
+          <span className="max-w-[90px] truncate">{locById[originAreaId]?.name ?? "Akurdi"}</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setFiltersOpen(true)}
-          className="relative flex h-12 items-center gap-2 rounded-md bg-ink-900 px-3.5 text-[14px] font-bold text-white lg:hidden"
+          className="relative flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-ink-900 px-4 text-[14px] font-bold text-white shadow-soft transition-transform active:scale-95 lg:hidden"
         >
-          <SlidersHorizontal className="size-4" /> Filters
+          <SlidersHorizontal className="size-4" />
+          <span>Filters</span>
           {activeCount > 0 && <span className="tabular flex size-5 items-center justify-center rounded-full bg-flame-500 text-[11px]">{activeCount}</span>}
         </button>
-      </div>
+      </BlurEntrance>
 
-      {/* Quick chips */}
-      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-        <FilterChip selected={false} onClick={() => useUiStore.getState().setLocationOpen(true)} icon={<MapPin className="size-3.5 text-flame-600" />}>
-          {scopeLabel}
-        </FilterChip>
-        <FilterChip selected={st.v} onClick={() => update({ v: !st.v })} icon={<BadgeCheck className="size-3.5 text-indigo-600" />}>
-          Verified only
-        </FilterChip>
-        {mode !== "offers" && (
-          <FilterChip selected={st.max === 499} onClick={() => update({ max: st.max === 499 ? undefined : 499 })}>
-            Under ₹499
-          </FilterChip>
+      {/* Single calm horizontal pill bar */}
+      <BlurEntrance delay={0.08} className="mt-3.5">
+        {mode === "offers" ? (
+          <CategoryStrip />
+        ) : (
+          mode !== "category" && (
+            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:px-0">
+              <CatChip label="All" selected={!st.cat} onClick={() => update({ cat: undefined, sub: undefined })} />
+              {ctx.categories
+                .filter((c) => c.active)
+                .sort((a, b) => a.order - b.order)
+                .map((c) => (
+                  <CatChip key={c.id} category={c} label={c.name.split(" & ")[0]} selected={st.cat === c.id} onClick={() => update({ cat: st.cat === c.id ? undefined : c.id, sub: undefined })} />
+                ))}
+            </div>
+          )
         )}
-        <FilterChip selected={st.disc >= 20} onClick={() => update({ disc: st.disc >= 20 ? 0 : 20 })}>
-          20%+ off
-        </FilterChip>
-        {mode !== "offers" && (
-          <FilterChip selected={st.live} onClick={() => update({ live: !st.live })} icon={<Sparkles className="size-3.5 text-saffron-500" />}>
-            Offers live
-          </FilterChip>
-        )}
-        {SORTS.filter((s) => s.value !== "relevance" || mode === "search").map((s) => (
-          <FilterChip key={s.value} selected={st.sort === s.value} onClick={() => update({ sort: s.value })} className="lg:hidden">
-            {s.label}
-          </FilterChip>
-        ))}
-      </div>
-
-      {/* Category / sub-category chips with photos */}
-      {mode !== "category" && (
-        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-          <CatChip label="Sab" selected={!st.cat} onClick={() => update({ cat: undefined, sub: undefined })} />
-          {ctx.categories
-            .filter((c) => c.active)
-            .sort((a, b) => a.order - b.order)
-            .map((c) => (
-              <CatChip key={c.id} category={c} label={c.name.split(" & ")[0]} selected={st.cat === c.id} onClick={() => update({ cat: st.cat === c.id ? undefined : c.id, sub: undefined })} />
+        {subs.length > 0 && (
+          <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:px-0">
+            <FilterChip selected={!st.sub} onClick={() => update({ sub: undefined })}>
+              All {catById[st.cat!]?.name.split(" & ")[0]}
+            </FilterChip>
+            {subs.map((s) => (
+              <FilterChip key={s.id} selected={st.sub === s.id} onClick={() => update({ sub: st.sub === s.id ? undefined : s.id })}>
+                {s.name}
+              </FilterChip>
             ))}
-        </div>
-      )}
-      {subs.length > 0 && (
-        <div className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-          <FilterChip selected={!st.sub} onClick={() => update({ sub: undefined })}>
-            Sab {catById[st.cat!]?.name.split(" & ")[0]}
-          </FilterChip>
-          {subs.map((s) => (
-            <FilterChip key={s.id} selected={st.sub === s.id} onClick={() => update({ sub: st.sub === s.id ? undefined : s.id })}>
-              {s.name}
-            </FilterChip>
-          ))}
-        </div>
-      )}
-      {mode === "offers" && shopsWithOffers.length > 1 && (
-        <div className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-          <FilterChip selected={!st.shop} onClick={() => update({ shop: undefined })} icon={<Store className="size-3.5 text-ink-500" />}>
-            Sab dukaanein
-          </FilterChip>
-          {shopsWithOffers.map((s) => (
-            <FilterChip key={s.id} selected={st.shop === s.id} onClick={() => update({ shop: st.shop === s.id ? undefined : s.id })}>
-              {s.name}
-            </FilterChip>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+      </BlurEntrance>
 
-      <div className="mt-5 flex gap-8">
-        {/* Desktop filter rail */}
-        <aside className="hidden w-[260px] shrink-0 lg:block">
-          <div className="rounded-2xl bg-surface p-4 shadow-1 ring-1 ring-ink-900/5">
+      <div className="mt-6 flex gap-8">
+        {/* Sticky desktop filter rail */}
+        <aside className="hidden w-[264px] shrink-0 lg:sticky lg:top-20 lg:block lg:self-start">
+          <div className="rounded-[24px] border border-black/[0.06] bg-white p-4 shadow-soft">
             <FilterPanel st={st} update={update} mode={mode} lockedCat={category} />
           </div>
           <LeadPanel
@@ -325,14 +293,14 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
         </aside>
 
         <div className="min-w-0 flex-1">
-          {/* Results header */}
+          {/* Results header + Clear active filters */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            {mode === "offers" ? (
-              <p className="text-[14px] text-ink-500">
-                <b className="tabular text-ink-900">{count}</b> offers · {scopeLabel}
-              </p>
-            ) : (
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {mode === "offers" ? (
+                <p className="text-[14px] text-ink-500">
+                  <b className="tabular text-ink-900">{count}</b> offers · {scopeLabel}
+                </p>
+              ) : (
                 <Segmented
                   id={`tab-${mode}`}
                   value={tab}
@@ -342,14 +310,24 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
                     { value: "shops", label: `Dukaanein · ${shopResults.length}` },
                   ]}
                 />
-              </div>
-            )}
+              )}
+              {(activeCount > 0 || !!st.q) && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="inline-flex h-7 items-center gap-1 rounded-full bg-flame-50 px-2.5 text-[12px] font-bold text-flame-600 transition-colors hover:bg-flame-100"
+                >
+                  <X className="size-3" /> Clear filters
+                </button>
+              )}
+            </div>
+
             <div className="hidden items-center gap-2 lg:flex">
               <span className="text-[13px] text-ink-500">Sort</span>
               <select
                 value={st.sort}
                 onChange={(e) => update({ sort: e.target.value as Sort })}
-                className="h-9 rounded-md border border-hairline bg-surface px-2.5 text-[13px] font-semibold text-ink-900 outline-none focus:border-indigo-500"
+                className="h-9 rounded-full border border-hairline bg-surface px-3 text-[13px] font-semibold text-ink-900 outline-none focus:border-indigo-500"
               >
                 {SORTS.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -370,47 +348,59 @@ function Discovery({ mode, categorySlug }: { mode: Mode; categorySlug?: string }
               hasFilters={activeCount > 0 || !!st.q}
             />
           ) : tab === "offers" ? (
-            <motion.div layout className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4 xl:grid-cols-4">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {offerResults.map((r, i) => (
-                  <motion.div key={r.offer.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={spring.gentle} className="h-full">
-                    <OfferCard offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} priority={i < 6} className="h-full" />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <ScrollBlurSection exitFade={false} className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:gap-4 xl:grid-cols-4">
+              {offerResults.map((r, i) => (
+                <div key={r.offer.id} className="h-full min-w-0">
+                  <OfferCard offer={r.offer} shop={r.shop} category={catById[r.offer.categoryId]} distanceKm={r.distanceKm} priority={i < 8} className="h-full" />
+                </div>
+              ))}
+            </ScrollBlurSection>
           ) : (
-            <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {shopResults.map((r) => {
-                  const best = Object.values(ctx.offers)
-                    .filter((o) => o.shopId === r.shop.id && o.status === "live")
-                    .sort((a, b) => (b.discountPct ?? 0) - (a.discountPct ?? 0))[0];
-                  return (
-                    <motion.div key={r.shop.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={spring.gentle} className="h-full">
-                      <ShopCoverCard
-                        shop={r.shop}
-                        category={catById[r.shop.categoryId]}
-                        areaName={locById[r.shop.areaId]?.name ?? ""}
-                        distanceKm={r.distanceKm}
-                        topDeal={best ? ribbonLabel(best) : undefined}
-                        liveOffers={r.liveOfferCount}
-                        className="h-full"
-                        onFollow={() => {
-                          setFollowShopId(r.shop.id);
-                          setFollowOpen(true);
-                        }}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
+            <ScrollBlurSection exitFade={false} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {shopResults.map((r) => {
+                const best = Object.values(ctx.offers)
+                  .filter((o) => o.shopId === r.shop.id && o.status === "live")
+                  .sort((a, b) => (b.discountPct ?? 0) - (a.discountPct ?? 0))[0];
+                return (
+                  <div key={r.shop.id} className="h-full min-w-0">
+                    <ShopCoverCard
+                      shop={r.shop}
+                      category={catById[r.shop.categoryId]}
+                      areaName={locById[r.shop.areaId]?.name ?? ""}
+                      distanceKm={r.distanceKm}
+                      topDeal={best ? ribbonLabel(best) : undefined}
+                      liveOffers={r.liveOfferCount}
+                      className="h-full"
+                      onFollow={() => {
+                        setFollowShopId(r.shop.id);
+                        setFollowOpen(true);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </ScrollBlurSection>
           )}
         </div>
       </div>
 
-      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters" footer={<Button variant="ink" size="lg" full onClick={() => setFiltersOpen(false)}>{count} results dekhein</Button>}>
+      <Sheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filters"
+        footer={
+          <div className="flex gap-2">
+            {(activeCount > 0 || !!st.q) && (
+              <Button variant="secondary" size="lg" onClick={clearAll}>
+                Clear
+              </Button>
+            )}
+            <Button variant="ink" size="lg" full onClick={() => setFiltersOpen(false)}>
+              Show {count} results
+            </Button>
+          </div>
+        }
+      >
         <FilterPanel st={st} update={update} mode={mode} lockedCat={category} />
       </Sheet>
       <FollowSheet key={followShopId ?? "none"} shop={followShopId ? ctx.shops[followShopId] : null} open={followOpen} onClose={() => setFollowOpen(false)} />
@@ -432,7 +422,7 @@ function CatChip({ category, label, selected, onClick }: { category?: Category; 
         selected ? "border-ink-900 bg-ink-900 text-white" : "border-hairline bg-surface text-ink-900 hover:border-hairline-strong",
       )}
     >
-      {category && <RetailImage imageKey={category.imageKey} size="thumb" mode="cover" wash={category.wash} alt="" className="size-8 rounded-full" />}
+      {category && <RetailImage imageKey={category.imageKey} size="thumb" mode="cover" wash={category.wash} alt="" priority className="size-8 rounded-full" />}
       {label}
     </button>
   );
@@ -443,21 +433,15 @@ function FilterPanel({ st, update, mode, lockedCat }: { st: UrlState; update: (p
   const subCategories = useStore((s) => s.subCategories);
   const locations = useStore((s) => s.locations);
   const buyerLocation = useStore((s) => s.buyerLocation);
-  const kids = (parent: string | undefined, level: Location["level"]) => locations.filter((l) => l.level === level && (parent === undefined || l.parentId === parent));
-  const chainOf = (id?: string) => {
-    const byId = Object.fromEntries(locations.map((l) => [l.id, l]));
-    const out: Partial<Record<Location["level"], string>> = {};
-    let cur = id ? byId[id] : undefined;
-    while (cur) {
-      out[cur.level] = cur.id;
-      cur = cur.parentId ? byId[cur.parentId] : undefined;
-    }
-    return out;
-  };
-  const sel = chainOf(st.loc ?? buyerLocation.areaId);
+  const cities = locations.filter((l) => l.level === "city");
+  const byId = Object.fromEntries(locations.map((l) => [l.id, l]));
+  const activeLoc = byId[st.loc ?? buyerLocation.areaId];
+  const activeCityId = activeLoc?.level === "city" ? activeLoc.id : activeLoc?.parentId;
+  const areas = locations.filter((l) => l.level === "area" && (!activeCityId || l.parentId === activeCityId));
+
   const catId = lockedCat?.id ?? st.cat;
   const subs = catId ? subCategories.filter((s) => s.categoryId === catId && s.active) : [];
-  const isArea = !st.loc || locations.find((l) => l.id === st.loc)?.level === "area";
+  const isArea = !st.loc || byId[st.loc]?.level === "area";
   const radius = st.r ?? buyerLocation.radiusKm;
 
   return (
@@ -475,7 +459,7 @@ function FilterPanel({ st, update, mode, lockedCat }: { st: UrlState; update: (p
         </Group>
       )}
       {subs.length > 0 && (
-        <Group title="Sub-category">
+        <Group title="Section">
           {subs.map((s) => (
             <FilterChip key={s.id} selected={st.sub === s.id} onClick={() => update({ sub: st.sub === s.id ? undefined : s.id })}>
               {s.name}
@@ -484,16 +468,24 @@ function FilterPanel({ st, update, mode, lockedCat }: { st: UrlState; update: (p
         </Group>
       )}
       <div>
-        <div className="mb-2 text-[13px] font-bold text-ink-900">Location</div>
-        <div className="flex flex-col gap-2.5">
-          <TierRow items={kids(undefined, "state")} value={sel.state} onPick={(id) => update({ loc: id, r: undefined })} />
-          {sel.state && <TierRow items={kids(sel.state, "district")} value={sel.district} onPick={(id) => update({ loc: id, r: undefined })} />}
-          {sel.district && <TierRow items={kids(sel.district, "city")} value={sel.city} onPick={(id) => update({ loc: id, r: undefined })} />}
-          {sel.city && <TierRow items={kids(sel.city, "area")} value={sel.area} onPick={(id) => update({ loc: id })} icon />}
+        <div className="mb-2 text-[13px] font-bold text-ink-900">City & Area</div>
+        <div className="flex flex-wrap gap-1.5">
+          {cities.map((c) => (
+            <FilterChip key={c.id} selected={activeCityId === c.id && st.loc === c.id} onClick={() => update({ loc: c.id, r: undefined })}>
+              {c.name.replace(" (PCMC)", "")}
+            </FilterChip>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {areas.map((a) => (
+            <FilterChip key={a.id} selected={a.id === (st.loc ?? buyerLocation.areaId)} onClick={() => update({ loc: a.id })} icon={<MapPin className="size-3 text-ink-500" />}>
+              {a.name}
+            </FilterChip>
+          ))}
         </div>
         {isArea && (
           <div className="mt-3">
-            <div className="mb-1.5 text-[12px] font-semibold text-ink-500">Radius</div>
+            <div className="mb-1.5 text-[12px] font-semibold text-ink-500">Distance</div>
             <div className="flex flex-wrap gap-1.5">
               {RADIUS_OPTIONS.map((r) => (
                 <FilterChip key={r} selected={radius === r} onClick={() => update({ r })}>
@@ -501,29 +493,28 @@ function FilterPanel({ st, update, mode, lockedCat }: { st: UrlState; update: (p
                 </FilterChip>
               ))}
               <FilterChip selected={radius === 0} onClick={() => update({ r: 0 })}>
-                Koi limit nahi
+                All
               </FilterChip>
             </div>
           </div>
         )}
-        {st.loc && (
-          <button type="button" onClick={() => update({ loc: undefined, r: undefined })} className="mt-2 text-[12px] font-bold text-indigo-600">
-            Meri location par wapas
-          </button>
-        )}
       </div>
-      <Group title="Kam se kam discount">
+
+      <Group title="Min Discount">
         {DISCOUNTS.map((d) => (
           <FilterChip key={d} selected={st.disc === d} onClick={() => update({ disc: d })}>
-            {d === 0 ? "Koi bhi" : `${d}%+`}
+            {d === 0 ? "Any" : `${d}%+`}
           </FilterChip>
         ))}
       </Group>
+
       <div className="flex flex-col gap-2">
-        <Toggle label="Sirf Verified dukaanein" checked={st.v} onChange={(v) => update({ v })} />
-        {mode !== "offers" && <Toggle label="Jinke offers live hain" checked={st.live} onChange={(live) => update({ live })} />}
+        <Toggle label="Under ₹499 only" checked={st.max === 499} onChange={(on) => update({ max: on ? 499 : undefined })} />
+        <Toggle label="Verified shops only" checked={st.v} onChange={(v) => update({ v })} />
+        {mode !== "offers" && <Toggle label="Has live offers" checked={st.live} onChange={(live) => update({ live })} />}
       </div>
-      <Group title="Sort">
+
+      <Group title="Sort by">
         {SORTS.filter((s) => s.value !== "relevance" || mode === "search").map((s) => (
           <FilterChip key={s.value} selected={st.sort === s.value} onClick={() => update({ sort: s.value })}>
             {s.label}
@@ -543,18 +534,6 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function TierRow({ items, value, onPick, icon }: { items: Location[]; value?: string; onPick: (id: string) => void; icon?: boolean }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((l) => (
-        <FilterChip key={l.id} selected={l.id === value} onClick={() => onPick(l.id)} icon={icon ? <MapPin className="size-3 text-ink-500" /> : undefined}>
-          {l.name}
-        </FilterChip>
-      ))}
-    </div>
-  );
-}
-
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="flex items-center justify-between gap-3 rounded-md py-1.5 text-left text-[14px] font-semibold text-ink-900">
@@ -568,7 +547,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 
 function ZeroResults({ q, radius, onWiden, onAnywhere, onClear, hasFilters }: { q: string; radius?: number; onWiden: () => void; onAnywhere: () => void; onClear: () => void; hasFilters: boolean }) {
   return (
-    <div className="rounded-xl bg-surface ring-1 ring-ink-900/5">
+    <div className="rounded-2xl bg-surface ring-1 ring-ink-900/5">
       <EmptyState
         wash="peach"
         title={q ? `“${q}” ka is area mein koi match nahi` : "Is area mein abhi koi match nahi"}
@@ -605,8 +584,8 @@ const HERO_TINT: Record<Category["wash"], string> = {
 
 function CategoryHero({ category, count, shops }: { category: Category; count: number; shops: number }) {
   return (
-    <div className={cn("relative mb-5 overflow-hidden rounded-2xl", HERO_TINT[category.wash])}>
-      <div className="relative z-10 flex min-h-[150px] max-w-[60%] flex-col justify-end p-5 lg:min-h-[210px] lg:p-8">
+    <div className={cn("relative mb-5 overflow-hidden rounded-[24px]", HERO_TINT[category.wash])}>
+      <div className="relative z-10 flex min-h-[150px] max-w-[62%] flex-col justify-end p-5 lg:min-h-[210px] lg:p-8">
         {category.nameHi && (
           <span lang="hi" className="font-deva text-[16px] font-bold text-ink-900/60">
             {category.nameHi}
@@ -623,15 +602,22 @@ function CategoryHero({ category, count, shops }: { category: Category; count: n
   );
 }
 
-function OffersHero({ count }: { count: number }) {
+function OffersHero({ count, scopeLabel }: { count: number; scopeLabel: string }) {
   return (
-    <div className="relative mb-5 overflow-hidden rounded-xl bg-[linear-gradient(118deg,#FFC629_0%,#FF9A3D_55%,#FF7A45_100%)] p-5 shadow-1 lg:p-8">
-      <div className="relative z-10 max-w-[65%]">
-        <span className="inline-flex h-6 items-center rounded-sm bg-ink-900 px-2 text-[11px] font-bold tracking-[0.06em] text-white uppercase">Universal Offers Hub</span>
-        <h1 className="mt-3 text-[28px] leading-[32px] font-extrabold tracking-[-0.02em] text-ink-900 lg:text-[40px] lg:leading-[44px]">Aaj ke saare Offers</h1>
-        <p className="tabular mt-1 text-[14px] font-semibold text-ink-900/75">{count} live deals · Akurdi se Malegaon tak</p>
+    <div className="relative mb-5 overflow-hidden rounded-[28px] bg-[linear-gradient(118deg,#FFC629_0%,#FF9A3D_55%,#FF7A45_100%)] p-5 shadow-soft lg:p-8">
+      <div className="relative z-10 max-w-full md:max-w-[58%]">
+        <span className="inline-flex h-6 items-center rounded-full bg-ink-900 px-3 text-[10.5px] font-bold tracking-[0.07em] text-saffron-400 uppercase">
+          Universal Offers Hub
+        </span>
+        <h1 className="mt-3 text-[28px] leading-[32px] font-extrabold tracking-[-0.02em] text-ink-900 lg:text-[42px] lg:leading-[46px]">
+          Aaj ke saare Offers
+        </h1>
+        <p className="tabular mt-1.5 text-[13.5px] font-semibold text-ink-900/75 lg:text-[15px]">
+          {count} live deals · {scopeLabel}
+        </p>
       </div>
-      <div className="absolute top-1/2 -right-6 hidden -translate-y-1/2 gap-3 sm:flex lg:right-8">
+      {/* Hidden below md (768px) so 390px mobile never collides with headline */}
+      <div className="absolute top-1/2 right-5 hidden -translate-y-1/2 gap-3 md:flex lg:right-8">
         {(["p-kaju-katli", "p-paithani", "p-kolhapuri"] as const).map((k, i) => (
           <RetailImage
             key={k}
@@ -640,7 +626,8 @@ function OffersHero({ count }: { count: number }) {
             size="thumb"
             wash="cream"
             alt=""
-            className={cn("size-[96px] rounded-2xl bg-white/45 lg:size-[132px]", i === 1 ? "-translate-y-3 rotate-2" : i === 0 ? "-rotate-3" : "rotate-3")}
+            priority
+            className={cn("size-[104px] rounded-2xl bg-white/50 shadow-soft backdrop-blur-sm lg:size-[132px]", i === 1 ? "-translate-y-3 rotate-2" : i === 0 ? "-rotate-3" : "rotate-3")}
           />
         ))}
       </div>

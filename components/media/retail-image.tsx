@@ -1,20 +1,19 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- remote photos are pre-sized via query params; next/image runs unoptimized anyway */
-import { useCallback, useEffect, useState } from "react";
-import { IMAGES, imageUrl, type ImageKey, type ImageSize } from "@/data/images";
+/* eslint-disable @next/next/no-img-element -- local/remote photos are pre-sized; next/image runs unoptimized anyway */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { IMAGES, imageUrl, isImageKey, type ImageKey, type ImageSize } from "@/data/images";
 import type { GlyphName, Wash } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { WASH_BG } from "./glyphs";
 
-const TIMEOUT_MS = 6000;
+const REMOTE_TIMEOUT_MS = 8000;
 type LoadState = "loading" | "loaded" | "failed";
 
 /**
- * The only way photos render (DESIGN §4.1):
- * pastel skeleton → photo → Pastel Fallback on error or 6s timeout.
- *
- * mode "framed": photo inset in the wash with the cutout treatment (§4.3)
- * mode "cover":  photo fills the box (covers, reels, banners)
+ * Resilient photo renderer:
+ * - Local /images/*.webp & *.png assets render eagerly without a premature lazy-scroll timeout
+ *   so below-the-fold cards never turn into blank striped placeholders before scrolling.
+ * - Remote URLs start their fallback timer ONLY once near/inside the viewport (IntersectionObserver).
  */
 export function RetailImage({
   imageKey,
@@ -46,19 +45,39 @@ export function RetailImage({
   /** Hover-lift hook: parent can scale the inner photo via group-hover. */
   zoom?: boolean;
 }) {
-  const meta = imageKey ? IMAGES[imageKey] : undefined;
-  const src = srcOverride ?? (imageKey ? imageUrl(imageKey, size) : undefined);
-  // Load result is keyed by src, so a new src naturally starts in "loading" (no effect-driven reset).
+  const validKey = imageKey && isImageKey(imageKey) ? imageKey : undefined;
+  const meta = validKey ? IMAGES[validKey] : undefined;
+  const src = srcOverride ?? (validKey ? imageUrl(validKey, size) : undefined);
+  const isLocal = !!src && (src.startsWith("/") || src.startsWith("data:") || src.startsWith("blob:"));
+
   const [result, setResult] = useState<{ src?: string; state: LoadState }>({ src, state: "loading" });
   const state: LoadState = !src ? "failed" : result.src === src ? result.state : "loading";
   const settle = useCallback((s: LoadState) => setResult((r) => (r.src === src && r.state !== "loading" ? r : { src, state: s })), [src]);
 
-  // 6s timeout → fallback (setState happens in the timer callback).
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(Boolean(priority || isLocal));
+
   useEffect(() => {
-    if (!src) return;
-    const t = setTimeout(() => setResult((r) => (r.src === src && r.state !== "loading" ? r : { src, state: "failed" })), TIMEOUT_MS);
+    if (priority || isLocal || !boxRef.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNearViewport(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "450px 0px" },
+    );
+    io.observe(boxRef.current);
+    return () => io.disconnect();
+  }, [priority, isLocal]);
+
+  // Timeout applies ONLY for remote URLs once near/in the viewport.
+  useEffect(() => {
+    if (!src || isLocal || !nearViewport) return;
+    const t = setTimeout(() => setResult((r) => (r.src === src && r.state !== "loading" ? r : { src, state: "failed" })), REMOTE_TIMEOUT_MS);
     return () => clearTimeout(t);
-  }, [src]);
+  }, [src, isLocal, nearViewport]);
 
   // Catch images that finished loading before hydration attached onLoad.
   const imgRef = useCallback(
@@ -73,11 +92,12 @@ export function RetailImage({
   const objectPos = focal === "top" ? "object-top" : focal === "bottom" ? "object-bottom" : "object-center";
   const light = !srcOverride && meta?.tone === "light";
   const isCutout = !srcOverride && meta?.tone === "cutout";
+  const loadingAttr = priority || isLocal ? "eager" : "lazy";
 
   if (state === "failed") return <PastelFallback wash={wash} label={fallbackLabel} lang={fallbackLang} className={className} />;
 
   return (
-    <div className={cn("relative overflow-hidden", WASH_BG[wash], className)}>
+    <div ref={boxRef} className={cn("relative overflow-hidden", WASH_BG[wash], className)}>
       {state === "loading" && <div aria-hidden className="skeleton absolute inset-0 rounded-[inherit] bg-transparent" />}
       {isCutout ? (
         <>
@@ -86,7 +106,7 @@ export function RetailImage({
             ref={imgRef}
             src={src}
             alt={label}
-            loading={priority ? "eager" : "lazy"}
+            loading={loadingAttr}
             decoding="async"
             draggable={false}
             onLoad={() => settle("loaded")}
@@ -112,7 +132,7 @@ export function RetailImage({
               ref={imgRef}
               src={src}
               alt={label}
-              loading={priority ? "eager" : "lazy"}
+              loading={loadingAttr}
               decoding="async"
               draggable={false}
               onLoad={() => settle("loaded")}
@@ -134,7 +154,7 @@ export function RetailImage({
           ref={imgRef}
           src={src}
           alt={label}
-          loading={priority ? "eager" : "lazy"}
+          loading={loadingAttr}
           decoding="async"
           draggable={false}
           onLoad={() => settle("loaded")}
