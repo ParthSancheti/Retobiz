@@ -1,18 +1,19 @@
 "use client";
 import Link from "next/link";
-import { motion } from "motion/react";
-import { ArrowRight, BadgePercent, Flame, LayoutGrid, Store, Timer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Flame, LayoutGrid, Sparkles, Timer } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store";
 import { searchOffers, searchShops } from "@/store/selectors";
 import { daysLeft, formatINR } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { spring } from "@/lib/motion";
+import { ease, spring } from "@/lib/motion";
 import { SectionHeader, Skeleton } from "@/components/ui/misc";
 import { AppearItem, BlurEntrance, ScrollBlurSection } from "@/components/ui/scroll-reveal";
 import { Hydrated } from "@/components/shell/hydrated";
 import { RetailImage } from "@/components/media/retail-image";
 import type { ImageKey } from "@/data/images";
+import type { Category } from "@/lib/types";
 import { CategoryStrip } from "./category-strip";
 import { CategoryTile } from "./category-tile";
 import { OfferCard, OfferCardSkeleton, ribbonLabel } from "./offer-card";
@@ -22,15 +23,18 @@ import { Rail } from "./rail";
 import { FollowSheet } from "./follow-sheet";
 import { useDiscoveryCtx, useLookups } from "./hooks";
 
-type JumpSection = "offers" | "shops" | "categories";
+type CatGroup = "all" | "daily" | "fashion" | "tech";
 
-const JUMP_OPTIONS: { id: JumpSection; targetId: string; label: string; icon: typeof BadgePercent }[] = [
-  { id: "offers", targetId: "home-offers", label: "Offers", icon: BadgePercent },
-  { id: "shops", targetId: "home-shops", label: "Shops", icon: Store },
-  { id: "categories", targetId: "home-categories", label: "Categories", icon: LayoutGrid },
+const CAT_GROUPS: { id: CatGroup; label: string; slugs?: string[] }[] = [
+  { id: "all", label: "Sabhi (10)" },
+  { id: "daily", label: "Daily", slugs: ["kirana", "bakery-mithai", "medical-chemist", "stationery-gifts"] },
+  { id: "fashion", label: "Fashion", slugs: ["saree-readymade", "footwear-bags", "jewellers-imitation"] },
+  { id: "tech", label: "Tech & Care", slugs: ["mobile-repair", "hardware-electricals", "salon-parlour"] },
 ];
 
-/** Buyer Home — calm frosted bazaar aesthetic with Apple scroll-blur choreography. */
+const AUTO_ADVANCE_MS = 4500;
+
+/** Buyer Home — structured, decluttered marketplace with auto-swiping hero spotlight & clear categorized discovery. */
 export function HomeView() {
   return (
     <Hydrated fallback={<HomeSkeleton />}>
@@ -41,10 +45,10 @@ export function HomeView() {
 
 function BazaarBand({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative pt-3 pb-6 lg:pt-5 lg:pb-8">
+    <div className="relative pt-2 pb-5 lg:pt-5 lg:pb-8">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-[100dvw] -translate-x-1/2 bg-[linear-gradient(180deg,#FFF5D6_0%,#FFF8E7_44%,var(--color-canvas)_100%)]"
+        className="pointer-events-none absolute -top-20 bottom-0 left-1/2 -z-10 w-[100dvw] -translate-x-1/2 bg-[linear-gradient(180deg,#FFF3D1_0%,#FFF8E7_56%,rgba(255,255,255,0)_100%)]"
       />
       {children}
     </div>
@@ -55,20 +59,21 @@ function HomeSkeleton() {
   return (
     <div aria-busy>
       <BazaarBand>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Skeleton className="h-10 w-[260px] rounded-full" />
+        <div className="mb-3 flex items-center justify-between">
+          <Skeleton className="h-6 w-44 rounded-full" />
         </div>
-        <div className="grid grid-cols-1 gap-3 [&>*]:min-w-0 lg:grid-cols-12 lg:gap-4">
-          <Skeleton className="h-[240px] rounded-[28px] lg:col-span-8 lg:h-[340px]" />
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-4 lg:grid-cols-1 lg:gap-4">
-            <Skeleton className="h-[126px] rounded-[24px] lg:h-[162px]" />
-            <Skeleton className="h-[126px] rounded-[24px] lg:h-[162px]" />
+        <Skeleton className="h-[224px] rounded-[26px] lg:hidden" />
+        <div className="hidden grid-cols-12 gap-5 lg:grid">
+          <Skeleton className="col-span-8 h-[340px] rounded-[28px]" />
+          <div className="col-span-4 flex flex-col gap-5">
+            <Skeleton className="h-[160px] rounded-[24px]" />
+            <Skeleton className="h-[160px] rounded-[24px]" />
           </div>
         </div>
       </BazaarBand>
-      <div className="mt-2 grid grid-cols-4 gap-3 md:grid-cols-5 lg:grid-cols-10">
+      <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {Array.from({ length: 10 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-lg" />
+          <Skeleton key={i} className="h-[76px] rounded-[20px] lg:h-[136px]" />
         ))}
       </div>
       <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -87,12 +92,17 @@ function HomeContent() {
   const buyerLocation = useStore((s) => s.buyerLocation);
   const [followShopId, setFollowShopId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [activeJump, setActiveJump] = useState<JumpSection>("offers");
+  const [catGroup, setCatGroup] = useState<CatGroup>("all");
 
   const areaName = locById[buyerLocation.areaId]?.name ?? "Akurdi";
   const scope = useMemo(() => ({ originAreaId: buyerLocation.areaId, radiusKm: buyerLocation.radiusKm }), [buyerLocation]);
 
   const categories = useMemo(() => ctx.categories.filter((c) => c.active).sort((a, b) => a.order - b.order), [ctx.categories]);
+  const filteredCats = useMemo(() => {
+    const grp = CAT_GROUPS.find((g) => g.id === catGroup);
+    if (!grp?.slugs) return categories;
+    return categories.filter((c) => grp.slugs!.includes(c.slug));
+  }, [categories, catGroup]);
 
   const flash = useMemo(() => {
     const near = searchOffers(ctx, { ...scope, kind: "offer", sort: "ending" });
@@ -118,71 +128,88 @@ function HomeContent() {
     return best ? ribbonLabel(best) : undefined;
   };
 
-  const jumpTo = (opt: (typeof JUMP_OPTIONS)[number]) => {
-    setActiveJump(opt.id);
-    document.getElementById(opt.targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
-    <div className="flex flex-col gap-10 pb-6 lg:gap-14">
+    <div className="flex flex-col gap-9 pb-6 lg:gap-14">
       <BazaarBand>
-        {/* Clean single segmented switcher above hero — warm theme palette */}
-        <BlurEntrance className="mb-4 flex items-center justify-between gap-3">
-          <div
-            role="tablist"
-            aria-label="Marketplace sections"
-            className="inline-flex items-center gap-1 rounded-full border border-[#EFE2C4] bg-[#FFFDF8]/90 p-1 shadow-[0_2px_12px_-4px_rgba(90,42,0,0.1)] backdrop-blur-xl"
-          >
-            {JUMP_OPTIONS.map((opt) => {
-              const active = activeJump === opt.id;
-              const Icon = opt.icon;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => jumpTo(opt)}
-                  className={cn(
-                    "relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold whitespace-nowrap transition-colors duration-200",
-                    active ? "text-white" : "text-[#5C5044] hover:text-ink-900",
-                  )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="home-jump-pill"
-                      transition={spring.pill}
-                      className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)] shadow-[0_4px_12px_-3px_rgba(236,70,19,0.45)]"
-                    />
-                  )}
-                  <Icon className={cn("relative size-3.5", active ? "text-white" : "text-[#6D5F52]")} strokeWidth={2.2} />
-                  <span className="relative">{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <span className="hidden text-[12.5px] font-medium text-ink-600 md:inline">
-            <b className="font-bold text-ink-900">{areaName}</b> · verified local shops & live offers
-          </span>
-        </BlurEntrance>
-
-        <BlurEntrance delay={0.04}>
-          <HeroBento />
+        <BlurEntrance>
+          <SpotlightHero areaName={areaName} />
         </BlurEntrance>
       </BazaarBand>
 
-      {/* Category Window */}
-      <ScrollBlurSection id="home-categories" aria-labelledby="cat-window" className="-mt-4 scroll-mt-24 rounded-[28px] border border-black/[0.05] bg-white/95 p-5 shadow-soft lg:-mt-6 lg:p-6">
-        <SectionHeader eyebrow="10 categories · aas-paas" title={<span id="cat-window">Kya dhoondh rahe hain?</span>} className="mb-4" />
-        <ul className="grid grid-cols-4 gap-x-2.5 gap-y-4 md:grid-cols-5 lg:grid-cols-10 lg:gap-4">
-          {categories.map((c, i) => (
-            <li key={c.id}>
-              <AppearItem index={i} immediate={i < 4}>
-                <CategoryTile category={c} />
-              </AppearItem>
-            </li>
-          ))}
-        </ul>
+      {/* Categorized Shop Directory — prominent & immediately discoverable on screen 1 */}
+      <ScrollBlurSection
+        id="home-categories"
+        aria-labelledby="cat-window"
+        className="-mt-3 scroll-mt-24 lg:-mt-6 lg:rounded-[28px] lg:border lg:border-black/[0.06] lg:bg-white lg:p-6 lg:shadow-[0_8px_30px_-12px_rgba(90,42,0,0.08)]"
+      >
+        <div className="mb-3 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.07em] text-flame-600 uppercase">
+              <LayoutGrid className="size-3.5" /> Browse by Category
+            </span>
+            <h2 id="cat-window" className="mt-0.5 text-[20px] leading-[25px] font-extrabold tracking-[-0.015em] text-ink-900 lg:text-[24px]">
+              Kya dhoondh rahe hain?
+            </h2>
+          </div>
+          <Link href="/search?tab=shops" className="shrink-0 text-[13px] font-bold whitespace-nowrap text-indigo-600 hover:text-indigo-700">
+            Sab dukaanein →
+          </Link>
+        </div>
+
+        {/* Interactive Category Group Selector — fits cleanly in one single mobile row */}
+        <div
+          role="tablist"
+          aria-label="Category groups"
+          className="no-scrollbar -mx-1 mb-3.5 flex gap-1.5 overflow-x-auto px-1 py-0.5"
+        >
+          {CAT_GROUPS.map((g) => {
+            const active = catGroup === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setCatGroup(g.id)}
+                className={cn(
+                  "relative inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-[12px] font-bold whitespace-nowrap transition-colors lg:px-3.5 lg:text-[12.5px]",
+                  active
+                    ? "border-transparent text-white shadow-[0_4px_12px_-3px_rgba(236,70,19,0.4)]"
+                    : "border-[#EADEC6] bg-white text-[#5C5044] hover:border-[#D9C7A3] hover:text-ink-900",
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="home-cat-group"
+                    transition={spring.pill}
+                    className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,#FF8A2B_0%,#EC4613_100%)]"
+                  />
+                )}
+                <span className="relative">{g.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Bigger 2-col cards on mobile, symmetrical 5-col showcase on desktop */}
+        <AnimatePresence mode="wait">
+          <motion.ul
+            key={catGroup}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2, ease: ease.out }}
+            className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5 lg:gap-3.5"
+          >
+            {filteredCats.map((c: Category, i: number) => (
+              <li key={c.id}>
+                <AppearItem index={i} immediate>
+                  <CategoryTile category={c} layout="card" />
+                </AppearItem>
+              </li>
+            ))}
+          </motion.ul>
+        </AnimatePresence>
       </ScrollBlurSection>
 
       {/* Flash deals + integrated quick intent filters */}
@@ -287,9 +314,24 @@ function HomeContent() {
   );
 }
 
-/* ─────────────────────────── Hero bento ─────────────────────────── */
+/* ─────────────────── Spotlight Hero: Auto-Swiping Mobile Carousel + Desktop Bento ─────────────────── */
 
-function HeroBento() {
+interface SpotlightSlide {
+  id: string;
+  href: string;
+  badge: string;
+  badgeTone: string;
+  title: string;
+  sub: string;
+  priceChip?: string;
+  cta: string;
+  bg: string;
+  imageKey: ImageKey;
+  imageAlt: string;
+  cornerPill?: { top: string; bottom: string };
+}
+
+function SpotlightHero({ areaName }: { areaName: string }) {
   const shops = useStore((s) => s.shops);
   const offers = useStore((s) => s.offers);
   const categories = useStore((s) => s.categories);
@@ -297,116 +339,305 @@ function HeroBento() {
   const heroOffer = offers["shop-lsc-o1"];
   const heroFrom = offers["shop-lsc-o2"];
   const mithai = offers["shop-msb-o1"];
+  const mithaiShop = shops["shop-msb"];
   const mobileShop = shops["shop-osm"];
   const mobileOffer = offers["shop-osm-o1"];
-  const left = daysLeft(heroOffer?.validTill);
   const mobileCat = categories.find((c) => c.id === "cat-mobile");
-  const mithaiShop = shops["shop-msb"];
+  const left = daysLeft(heroOffer?.validTill);
+
+  const slides: SpotlightSlide[] = [
+    {
+      id: "saree",
+      href: hero ? `/shop/${hero.slug}${heroOffer ? `?offer=${heroOffer.id}&src=card` : "?src=card"}` : "/offers",
+      badge: "Lagna Season Sale",
+      badgeTone: "bg-ink-900 text-saffron-400",
+      title: "Silk sarees par flat 20% off",
+      sub: `${hero?.name ?? "Laxmi Saree Centre"}, Akurdi${left != null ? ` · Sirf ${left} din` : ""}`,
+      priceChip: heroFrom?.price != null ? `Paithani ${formatINR(heroFrom.price)} se` : undefined,
+      cta: "Offer Dekhein",
+      bg: "bg-[linear-gradient(122deg,#FFC629_0%,#FF9A3D_55%,#FF6A3D_100%)]",
+      imageKey: "p-paithani",
+      imageAlt: "Yeola Paithani silk saree",
+      cornerPill: { top: "20%", bottom: "OFF" },
+    },
+    {
+      id: "mithai",
+      href: mithaiShop ? `/shop/${mithaiShop.slug}${mithai ? `?offer=${mithai.id}&src=card` : "?src=card"}` : "/category/bakery-mithai",
+      badge: "Mithai & Bakery",
+      badgeTone: "bg-flame-600 text-white",
+      title: mithai?.price != null ? `Fresh Kaju Katli ${formatINR(mithai.price)}/kg` : "Fresh Festive Mithai",
+      sub: mithaiShop ? `${mithaiShop.name}, Chinchwad` : "Pure ghee sweets & bakery",
+      priceChip: mithai?.mrp ? `MRP ${formatINR(mithai.mrp)}` : "Daily Fresh Stock",
+      cta: "Explore Mithai",
+      bg: "bg-[linear-gradient(125deg,#FFE3CF_0%,#FFC19C_100%)]",
+      imageKey: "p-kaju-katli",
+      imageAlt: "Fresh Kaju Katli tray",
+      cornerPill: { top: "19%", bottom: "OFF" },
+    },
+    {
+      id: "mobile",
+      href: mobileCat ? `/category/${mobileCat.slug}` : "/offers",
+      badge: "Mobile Accessories",
+      badgeTone: "bg-indigo-600 text-white",
+      title: "Phone Covers & Tempered Glass",
+      sub: mobileShop ? `Screen guard ${formatINR(mobileOffer?.price ?? 199)} · ${mobileShop.name}` : "Printed & silicone covers",
+      priceChip: `Deals under ${formatINR(299)}`,
+      cta: "Shop Deals",
+      bg: "bg-[linear-gradient(125deg,#DCE9FF_0%,#B4CEFF_100%)]",
+      imageKey: "p-phone-covers",
+      imageAlt: "Designer phone back covers",
+      cornerPill: { top: "₹199", bottom: "STARTS" },
+    },
+  ];
+
+  const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotion();
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (paused || reduce) return;
+    const id = setInterval(() => {
+      setSlide((s) => (s + 1) % slides.length);
+    }, AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [paused, reduce, slides.length, slide]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    setPaused(true);
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    const t = e.changedTouches[0];
+    touchStart.current = null;
+    setPaused(false);
+    if (!start || !t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+      setSlide((s) => (dx < 0 ? (s + 1) % slides.length : (s - 1 + slides.length) % slides.length));
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 gap-3.5 [&>*]:min-w-0 lg:grid-cols-12 lg:gap-5">
-      <Link
-        href={hero ? `/shop/${hero.slug}${heroOffer ? `?offer=${heroOffer.id}&src=card` : "?src=card"}` : "/offers"}
-        className="group relative flex min-h-[250px] overflow-hidden rounded-[28px] bg-[linear-gradient(118deg,#FFC629_0%,#FF9A3D_55%,#FF6A3D_100%)] shadow-lift ring-1 ring-white/40 ring-inset transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.99] lg:col-span-8 lg:min-h-[340px]"
-      >
-        <div className="relative z-10 flex w-[62%] flex-col justify-between p-5 lg:w-[54%] lg:p-9">
-          <div>
-            <span className="inline-flex min-h-[26px] items-center rounded-full bg-ink-900 px-2.5 py-1 text-[10px] font-bold tracking-[0.07em] whitespace-nowrap text-saffron-400 uppercase lg:px-3 lg:text-[11px]">
-              Lagna Season Sale
-            </span>
-            <h1 className="mt-3 text-[25px] leading-[28px] font-extrabold tracking-[-0.025em] text-ink-900 lg:text-[48px] lg:leading-[50px]">
-              Silk sarees par <span className="whitespace-nowrap">flat 20% off</span>
-            </h1>
-            <p className="mt-2 text-[12.5px] leading-[17px] font-semibold text-ink-900/75 lg:text-[15px]">
-              {hero?.name ?? "Laxmi Saree Centre"}, Akurdi{left != null ? ` · Sirf ${left} din` : ""}
-            </p>
-          </div>
-          <div className="mt-4 flex flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center md:gap-2.5">
-            {heroFrom?.price != null && (
-              <span className="tabular inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-[12px] font-bold whitespace-nowrap text-ink-900 backdrop-blur-md lg:py-1.5 lg:text-[15px]">
-                Paithani {formatINR(heroFrom.price)} se
-              </span>
-            )}
-            <span className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_8px_20px_-8px_rgba(18,20,26,0.7)] lg:h-12 lg:px-5 lg:text-[14px]">
-              Offer Dekhein <ArrowRight className="size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1" />
-            </span>
-          </div>
+    <div>
+      {/* Clear Spotlight Section Heading */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex size-6 items-center justify-center rounded-full bg-flame-500 text-white shadow-1">
+            <Sparkles className="size-3.5" strokeWidth={2.2} />
+          </span>
+          <h1 className="font-display text-[17px] leading-tight font-extrabold tracking-[-0.015em] text-ink-900 lg:text-[20px]">
+            Aaj ke Spotlight Deals
+          </h1>
         </div>
-        {/* Cutout hero: glow disc + layered sarees */}
-        <div aria-hidden className="absolute top-1/2 right-[2%] aspect-square w-[44%] -translate-y-1/2 rounded-full bg-white/35 lg:right-[6%] lg:w-[40%]" />
-        <div aria-hidden className="absolute top-[18%] right-[28%] aspect-square w-[14%] rounded-full bg-white/20 lg:right-[38%] lg:w-[10%]" />
-        <RetailImage
-          imageKey={"p-paithani" as ImageKey}
-          mode="cover"
-          size="cover"
-          wash="cream"
-          alt="Yeola Paithani silk saree"
-          priority
-          zoom
-          className="absolute right-[-6%] bottom-[-4%] h-[92%] w-[48%] bg-transparent lg:right-[2%] lg:bottom-[-6%] lg:h-[108%] lg:w-[44%]"
-        />
-        <RetailImage
-          imageKey={"p-bridal-saree" as ImageKey}
-          mode="cover"
-          size="card"
-          wash="cream"
-          alt=""
-          priority
-          className="absolute right-[30%] bottom-[-8%] hidden h-[62%] w-[24%] -rotate-6 bg-transparent lg:block"
-        />
-        <span className="tabular absolute top-3.5 right-3.5 z-10 flex size-[60px] rotate-[8deg] flex-col items-center justify-center rounded-full bg-flame-500 text-white shadow-2 ring-4 ring-white/40 lg:top-6 lg:right-6 lg:size-[92px]">
-          <span className="text-[19px] leading-none font-extrabold lg:text-[32px]">20%</span>
-          <span className="text-[9.5px] font-bold tracking-[0.08em] lg:text-[11px]">OFF</span>
+        <span className="text-[12px] font-semibold text-ink-600 lg:hidden">
+          {slide + 1} / {slides.length} · {areaName}
         </span>
-      </Link>
+        <span className="hidden text-[13px] font-semibold text-ink-600 lg:inline">
+          <b className="font-bold text-ink-900">{areaName}</b> · curated local offers
+        </span>
+      </div>
 
-      {/* Spacious full-width promo stack on mobile (390px), 2-col on tablet, stacked right rail on desktop */}
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 lg:col-span-4 lg:grid-cols-1 lg:gap-5">
-        <PromoCard
-          href={mithaiShop ? `/shop/${mithaiShop.slug}${mithai ? `?offer=${mithai.id}&src=card` : "?src=card"}` : "/category/bakery-mithai"}
-          imageKey="p-kaju-katli"
-          eyebrow="Mithai & Bakery"
-          title={mithai?.price != null ? `Kaju Katli ${formatINR(mithai.price)}/kg` : "Mithai offers"}
-          sub={mithaiShop ? `${mithaiShop.name}, Chinchwad` : undefined}
-          wash="peach"
-        />
-        <PromoCard
-          href={mobileCat ? `/category/${mobileCat.slug}` : "/offers"}
-          imageKey="p-phone-covers"
-          eyebrow="Mobile Accessories"
-          title={mobileOffer?.price != null ? `${formatINR(299)} ke andar` : "Accessories deals"}
-          sub={mobileShop ? `Screen guard ${formatINR(mobileOffer?.price ?? 199)} · ${mobileShop.name}` : undefined}
-          wash="sky"
-        />
+      {/* ── MOBILE (< lg): Timed Auto-Swiping Hero Carousel + Dot & Line Indicator ── */}
+      <div
+        className="lg:hidden"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="Aaj ke Spotlight Deals"
+      >
+        <div className="overflow-hidden rounded-[26px] shadow-lift">
+          <motion.div
+            animate={{ x: `-${slide * 100}%` }}
+            transition={{ type: "spring", stiffness: 310, damping: 32, mass: 0.9 }}
+            className="flex"
+          >
+            {slides.map((s) => (
+              <Link
+                key={s.id}
+                href={s.href}
+                className={cn(
+                  "group relative flex min-h-[228px] w-full shrink-0 overflow-hidden p-5 ring-1 ring-white/45 ring-inset active:scale-[0.995]",
+                  s.bg,
+                )}
+              >
+                <div className="relative z-10 flex w-[62%] flex-col justify-between">
+                  <div>
+                    <span className={cn("inline-flex min-h-[24px] items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold tracking-[0.06em] whitespace-nowrap uppercase", s.badgeTone)}>
+                      {s.badge}
+                    </span>
+                    <h2 className="mt-2.5 font-display text-[22px] leading-[26px] font-extrabold tracking-[-0.02em] text-ink-900">
+                      {s.title}
+                    </h2>
+                    <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-[17px] font-semibold text-ink-900/75">
+                      {s.sub}
+                    </p>
+                  </div>
+                  <div className="mt-3.5 flex flex-col items-start gap-2">
+                    {s.priceChip && (
+                      <span className="tabular inline-flex items-center rounded-full bg-white/88 px-3 py-1 text-[11.5px] font-bold whitespace-nowrap text-ink-900 backdrop-blur-md">
+                        {s.priceChip}
+                      </span>
+                    )}
+                    <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[12.5px] font-bold whitespace-nowrap text-white shadow-[0_8px_18px_-6px_rgba(18,20,26,0.65)]">
+                      {s.cta} <ArrowRight className="size-3.5" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Glow backdrop + crisp product visual */}
+                <div aria-hidden className="absolute top-1/2 right-[2%] aspect-square w-[44%] -translate-y-1/2 rounded-full bg-white/45" />
+                <RetailImage
+                  imageKey={s.imageKey}
+                  mode="cover"
+                  size="cover"
+                  wash="cream"
+                  alt={s.imageAlt}
+                  priority
+                  className="absolute right-[-3%] bottom-[2%] h-[82%] w-[44%] bg-transparent"
+                />
+                {s.cornerPill && (
+                  <span className="tabular absolute top-3 right-3 z-10 flex size-[54px] rotate-[6deg] flex-col items-center justify-center rounded-full bg-flame-500 text-white shadow-2 ring-3 ring-white/50">
+                    <span className="text-[16px] leading-none font-extrabold">{s.cornerPill.top}</span>
+                    <span className="mt-0.5 text-[8px] font-bold tracking-[0.06em]">{s.cornerPill.bottom}</span>
+                  </span>
+                )}
+              </Link>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Animated Dot + Progress Line Indicator */}
+        <div className="mt-3 flex items-center justify-center gap-2" role="tablist" aria-label="Spotlight slides">
+          {slides.map((s, idx) => {
+            const active = idx === slide;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-label={`Slide ${idx + 1}: ${s.title}`}
+                onClick={() => setSlide(idx)}
+                className="flex h-5 items-center justify-center px-0.5"
+              >
+                {active ? (
+                  <span className="relative h-1.5 w-8 overflow-hidden rounded-full bg-ink-900/15">
+                    {reduce || paused ? (
+                      <span className="block h-full w-full rounded-full bg-flame-500" />
+                    ) : (
+                      <motion.span
+                        key={slide}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: "linear" }}
+                        style={{ transformOrigin: "0% 50%" }}
+                        className="block h-full w-full rounded-full bg-[linear-gradient(90deg,#FF8A2B,#EC4613)]"
+                      />
+                    )}
+                  </span>
+                ) : (
+                  <span className="size-1.5 rounded-full bg-ink-900/20 transition-colors hover:bg-ink-900/45" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── DESKTOP (lg+): Balanced 8 + 4 Editorial Bento ── */}
+      <div className="hidden grid-cols-12 gap-5 [&>*]:min-w-0 lg:grid">
+        <Link
+          href={slides[0].href}
+          className="group relative col-span-8 flex min-h-[340px] overflow-hidden rounded-[28px] bg-[linear-gradient(118deg,#FFC629_0%,#FF9A3D_55%,#FF6A3D_100%)] shadow-lift ring-1 ring-white/40 ring-inset transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.99]"
+        >
+          <div className="relative z-10 flex w-[54%] flex-col justify-between p-9">
+            <div>
+              <span className="inline-flex min-h-[26px] items-center rounded-full bg-ink-900 px-3 py-1 text-[11px] font-bold tracking-[0.07em] whitespace-nowrap text-saffron-400 uppercase">
+                Lagna Season Sale
+              </span>
+              <h2 className="mt-3 text-[48px] leading-[50px] font-extrabold tracking-[-0.025em] text-ink-900">
+                Silk sarees par <span className="whitespace-nowrap">flat 20% off</span>
+              </h2>
+              <p className="mt-2 text-[15px] font-semibold text-ink-900/75">
+                {slides[0].sub}
+              </p>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {slides[0].priceChip && (
+                <span className="tabular inline-flex items-center rounded-full bg-white/85 px-3.5 py-1.5 text-[15px] font-bold whitespace-nowrap text-ink-900 backdrop-blur-md">
+                  {slides[0].priceChip}
+                </span>
+              )}
+              <span className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-5 text-[14px] font-bold whitespace-nowrap text-white shadow-[0_8px_20px_-8px_rgba(18,20,26,0.7)]">
+                Offer Dekhein <ArrowRight className="size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1" />
+              </span>
+            </div>
+          </div>
+          <div aria-hidden className="absolute top-1/2 right-[6%] aspect-square w-[40%] -translate-y-1/2 rounded-full bg-white/35" />
+          <div aria-hidden className="absolute top-[18%] right-[38%] aspect-square w-[10%] rounded-full bg-white/20" />
+          <RetailImage
+            imageKey="p-paithani"
+            mode="cover"
+            size="cover"
+            wash="cream"
+            alt="Yeola Paithani silk saree"
+            priority
+            zoom
+            className="absolute right-[2%] bottom-[-6%] h-[108%] w-[44%] bg-transparent"
+          />
+          <RetailImage
+            imageKey="p-bridal-saree"
+            mode="cover"
+            size="card"
+            wash="cream"
+            alt=""
+            priority
+            className="absolute right-[30%] bottom-[-8%] h-[62%] w-[24%] -rotate-6 bg-transparent"
+          />
+          <span className="tabular absolute top-6 right-6 z-10 flex size-[92px] rotate-[8deg] flex-col items-center justify-center rounded-full bg-flame-500 text-white shadow-2 ring-4 ring-white/40">
+            <span className="text-[32px] leading-none font-extrabold">20%</span>
+            <span className="text-[11px] font-bold tracking-[0.08em]">OFF</span>
+          </span>
+        </Link>
+
+        <div className="col-span-4 grid grid-cols-1 gap-5">
+          {slides.slice(1).map((s) => (
+            <Link
+              key={s.id}
+              href={s.href}
+              className={cn(
+                "group relative flex min-h-[162px] overflow-hidden rounded-[24px] shadow-soft ring-1 ring-white/50 ring-inset transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_14px_34px_-10px_rgba(18,20,26,0.12)] active:scale-[0.98]",
+                s.bg,
+              )}
+            >
+              <div className="relative z-10 flex w-[56%] flex-col justify-between p-5">
+                <div>
+                  <span className="block text-[10.5px] font-extrabold tracking-[0.08em] whitespace-nowrap text-ink-900/70 uppercase">
+                    {s.badge}
+                  </span>
+                  <span className="mt-1 block font-display text-[20px] leading-[23px] font-extrabold tracking-[-0.015em] text-ink-900">
+                    {s.title}
+                  </span>
+                  <span className="mt-1 line-clamp-2 block text-[12px] leading-[16px] text-ink-700">{s.sub}</span>
+                </div>
+                <span className="mt-2.5 inline-flex h-8 w-fit items-center gap-1 rounded-full bg-white/88 px-3.5 text-[12px] font-bold whitespace-nowrap text-ink-900 shadow-1 backdrop-blur-sm transition-colors group-hover:bg-white">
+                  {s.cta} <ArrowRight className="size-3.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5" />
+                </span>
+              </div>
+              <RetailImage imageKey={s.imageKey} mode="cover" size="card" wash="cream" alt={s.imageAlt} priority zoom className="absolute -right-[6%] bottom-0 h-[112%] w-[52%] bg-transparent" />
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
-  );
-}
-
-const PROMO_TONE = {
-  peach: { bg: "bg-[#FFDDC8]", eyebrow: "text-flame-700", cta: "bg-flame-600" },
-  sky: { bg: "bg-[#D4E4FF]", eyebrow: "text-indigo-700", cta: "bg-indigo-600" },
-} as const;
-
-/** Instamart-style banner card: saturated tint, roomy text left, big cutout right, pill CTA. */
-function PromoCard({ href, imageKey, eyebrow, title, sub, wash }: { href: string; imageKey: ImageKey; eyebrow: string; title: string; sub?: string; wash: "peach" | "sky" }) {
-  const t = PROMO_TONE[wash];
-  return (
-    <Link
-      href={href}
-      className={`group relative flex min-h-[136px] overflow-hidden rounded-[24px] ${t.bg} shadow-soft ring-1 ring-white/50 ring-inset transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_14px_34px_-10px_rgba(18,20,26,0.12)] active:scale-[0.98] lg:min-h-[162px]`}
-    >
-      <div className="relative z-10 flex w-[62%] flex-col justify-between p-4 lg:w-[56%] lg:p-5">
-        <div>
-          <span className={`block text-[10.5px] font-extrabold tracking-[0.08em] whitespace-nowrap uppercase ${t.eyebrow}`}>{eyebrow}</span>
-          <span className="mt-1 block font-display text-[19px] leading-[23px] font-extrabold tracking-[-0.015em] text-ink-900 lg:text-[21px] lg:leading-[24px]">{title}</span>
-          {sub && <span className="mt-1 line-clamp-2 block text-[12px] leading-[16px] text-ink-700">{sub}</span>}
-        </div>
-        <span className="mt-2.5 inline-flex h-8 w-fit items-center gap-1 rounded-full bg-white/85 px-3.5 text-[12px] font-bold whitespace-nowrap text-ink-900 shadow-1 backdrop-blur-sm transition-colors group-hover:bg-white">
-          Explore <ArrowRight className="size-3.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5" />
-        </span>
-      </div>
-      <RetailImage imageKey={imageKey} mode="cover" size="card" wash="cream" alt="" priority zoom className="absolute right-[-2%] bottom-0 h-[108%] w-[44%] bg-transparent lg:-right-[6%] lg:h-[112%] lg:w-[52%]" />
-    </Link>
   );
 }

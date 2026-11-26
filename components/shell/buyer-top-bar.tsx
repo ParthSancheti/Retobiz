@@ -72,19 +72,19 @@ export function BuyerTopBar() {
   }, [locations, buyerLocation.areaId]);
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-30 h-16 transition-[background-color,box-shadow,border-color,backdrop-filter] duration-[220ms] ease-out",
-        scrolled
-          ? "border-b border-[#E8DEC6]/80 bg-[#FFFDF8]/88 shadow-[0_6px_28px_rgba(90,42,0,0.08)] backdrop-blur-2xl"
-          : "border-b border-black/[0.04] bg-[#FFF5D6]",
-      )}
-    >
-      <div className="relative mx-auto flex h-full max-w-[1280px] items-center justify-between gap-3 px-4 lg:gap-4 lg:px-8">
-        {/* Left: Clean Retobiz Branding (+ Desktop-only Location Pill) */}
+    <header className="sticky top-0 z-30 px-3 pt-2.5 pb-1 lg:px-0 lg:py-0">
+      <div
+        className={cn(
+          "relative mx-auto flex h-[60px] max-w-[1280px] items-center justify-between gap-3 rounded-full border px-4 transition-all duration-[220ms] ease-out lg:h-16 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:px-8",
+          scrolled
+            ? "border-[#E5D5B6]/95 bg-[#FFFDF8]/92 shadow-[0_12px_34px_-10px_rgba(92,45,8,0.18),0_2px_10px_rgba(245,180,0,0.1)] backdrop-blur-2xl"
+            : "border-white/80 bg-[#FFFDF8]/88 shadow-[0_8px_28px_-10px_rgba(92,45,8,0.14),0_2px_6px_rgba(92,45,8,0.05)] backdrop-blur-2xl lg:border-black/[0.04] lg:bg-[#FFF5D6]/90 lg:shadow-none",
+        )}
+      >
+        {/* Left: Bigger crisp Retobiz Branding (+ Desktop-only Location Pill) */}
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" aria-label="Retobiz home" className="shrink-0 rounded-full transition-transform active:scale-95">
-            <BrandLockup size="sm" />
+            <BrandLockup size="nav" />
           </Link>
 
           <button
@@ -106,7 +106,7 @@ export function BuyerTopBar() {
           <DesktopNav />
         </Suspense>
 
-        {/* Right: Minimalist cluster — Search + Profile Picture on mobile */}
+        {/* Right: Minimalist cluster — larger Search + Profile Picture on mobile */}
         <div className="flex shrink-0 items-center gap-2 lg:gap-2.5">
           {/* Desktop compact Search bar */}
           <button
@@ -136,10 +136,10 @@ export function BuyerTopBar() {
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="flex size-10 items-center justify-center rounded-full border border-black/[0.07] bg-white/90 text-ink-900 shadow-[0_2px_8px_-3px_rgba(18,20,26,0.08)] backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-95 lg:hidden"
+            className="flex size-10 items-center justify-center rounded-full border border-black/[0.07] bg-white text-ink-900 shadow-[0_2px_8px_-3px_rgba(18,20,26,0.1)] transition-all duration-200 hover:bg-canvas active:scale-95 lg:hidden"
             aria-label={STATIC_PLACEHOLDER}
           >
-            <Search className="size-[18px]" strokeWidth={2.1} />
+            <Search className="size-[19px]" strokeWidth={2.15} />
           </button>
 
           {/* Mobile 2/2 (+ Desktop): Profile Picture Avatar hosting Location & Account Options */}

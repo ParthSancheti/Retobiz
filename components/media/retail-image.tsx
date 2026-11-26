@@ -93,12 +93,13 @@ export function RetailImage({
   const light = !srcOverride && meta?.tone === "light";
   const isCutout = !srcOverride && meta?.tone === "cutout";
   const loadingAttr = priority || isLocal ? "eager" : "lazy";
+  const visible = isLocal || state === "loaded";
 
   if (state === "failed") return <PastelFallback wash={wash} label={fallbackLabel} lang={fallbackLang} className={className} />;
 
   return (
     <div ref={boxRef} className={cn("relative overflow-hidden", WASH_BG[wash], className)}>
-      {state === "loading" && <div aria-hidden className="skeleton absolute inset-0 rounded-[inherit] bg-transparent" />}
+      {!visible && <div aria-hidden className="skeleton absolute inset-0 rounded-[inherit] bg-transparent" />}
       {isCutout ? (
         <>
           <div aria-hidden className="shadow-ground pointer-events-none absolute bottom-[5%] left-[18%] h-[9%] w-[64%] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-95 group-hover:opacity-75" />
@@ -107,14 +108,15 @@ export function RetailImage({
             src={src}
             alt={label}
             loading={loadingAttr}
-            decoding="async"
+            decoding={priority || isLocal ? "sync" : "async"}
             draggable={false}
             onLoad={() => settle("loaded")}
             onError={() => settle("failed")}
             className={cn(
-              "absolute inset-[7%] bottom-[9%] h-[84%] w-[86%] object-contain transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+              "absolute inset-[7%] bottom-[9%] h-[84%] w-[86%] object-contain will-change-transform",
+              isLocal ? "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" : "transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
               zoom && "group-hover:scale-[1.04]",
-              state === "loaded" ? "opacity-100" : "opacity-0",
+              visible ? "opacity-100" : "opacity-0",
               imgClassName,
             )}
           />
@@ -133,15 +135,16 @@ export function RetailImage({
               src={src}
               alt={label}
               loading={loadingAttr}
-              decoding="async"
+              decoding={priority || isLocal ? "sync" : "async"}
               draggable={false}
               onLoad={() => settle("loaded")}
               onError={() => settle("failed")}
               className={cn(
-                "h-full w-full object-cover transition-opacity duration-300",
+                "h-full w-full object-cover",
+                !isLocal && "transition-opacity duration-200",
                 objectPos,
                 light && "mix-blend-multiply",
-                state === "loaded" ? "opacity-100" : "opacity-0",
+                visible ? "opacity-100" : "opacity-0",
                 imgClassName,
               )}
             />
@@ -155,15 +158,16 @@ export function RetailImage({
           src={src}
           alt={label}
           loading={loadingAttr}
-          decoding="async"
+          decoding={priority || isLocal ? "sync" : "async"}
           draggable={false}
           onLoad={() => settle("loaded")}
           onError={() => settle("failed")}
           className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+            "absolute inset-0 h-full w-full object-cover will-change-transform",
+            isLocal ? "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" : "transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
             zoom && "group-hover:scale-[1.04]",
             objectPos,
-            state === "loaded" ? "opacity-100" : "opacity-0",
+            visible ? "opacity-100" : "opacity-0",
             imgClassName,
           )}
         />

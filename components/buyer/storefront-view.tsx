@@ -411,7 +411,7 @@ function Storefront() {
         <div
           className={cn(
             "sticky z-20 -mx-4 mt-5 border-b border-hairline bg-surface/90 px-4 backdrop-blur-xl lg:mx-0 lg:px-0",
-            ownerMode ? "top-28" : "top-16",
+            ownerMode ? "top-[122px] lg:top-28" : "top-[74px] lg:top-16",
           )}
         >
           <div className="no-scrollbar flex gap-1 overflow-x-auto">

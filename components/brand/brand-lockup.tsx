@@ -10,6 +10,7 @@ export const TAGLINE: Record<Lang, string> = {
 
 const SIZE = {
   sm: { mark: 22, word: "text-[19px]", tag: "text-[11px]" },
+  nav: { mark: 26, word: "text-[22px]", tag: "text-[11px]" },
   md: { mark: 28, word: "text-[24px]", tag: "text-[12px]" },
   lg: { mark: 40, word: "text-[34px]", tag: "text-[14px]" },
 } as const;
